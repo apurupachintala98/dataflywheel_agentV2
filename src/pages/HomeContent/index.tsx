@@ -153,42 +153,36 @@ const HomeContent = ({ isReset, promptValue, recentValue, isLogOut, setCheckIsLo
     scrollToBottom();
   }, [messages]);
 
-  const parseStreamEvent = (line: string) => {
+  const parseStreamEvent = (line: string): StreamEvent | null => {
     if (line.startsWith("event: ")) {
-      return { event: line.substring(7).trim(), data: null }
+      const event = line.substring(7)
+      return { event, data: null }
     }
     if (line.startsWith("data: ")) {
       try {
-        const dataStr = line.substring(6).trim()
-        if (dataStr === "[DONE]") {
-          return { event: "done", data: null }
-        }
-        return { event: "data", data: JSON.parse(dataStr) }
-      } catch (error) {
-        console.error("Failed to parse data:", error)
-        return null
+        const data = JSON.parse(line.substring(6))
+        return { event: "data", data }
+      } catch (e) {
+        return { event: "data", data: line.substring(6) }
       }
     }
     return null
   }
-
-   const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!inputValue.trim() || isLoading) return
-    const userInput = inputValue.trim()
 
-    // user message
     const userMessage: Message = {
       id: Date.now().toString(),
       type: "user",
-      content: userInput,
+      content: inputValue.trim(),
     }
 
     setMessages((prev) => [...prev, userMessage])
     setInputValue("")
     setIsLoading(true)
 
-    // assistant placeholder
+    // Create assistant message placeholder
     const assistantMessage: Message = {
       id: (Date.now() + 1).toString(),
       type: "assistant",
@@ -196,10 +190,11 @@ const HomeContent = ({ isReset, promptValue, recentValue, isLogOut, setCheckIsLo
       thinking: "",
       isStreaming: true,
     }
+
     setMessages((prev) => [...prev, assistantMessage])
 
     try {
-      await simulateStreamingResponse(assistantMessage.id, userInput)
+      await simulateStreamingResponse(assistantMessage.id, inputValue.trim())
     } catch (error) {
       console.error("Streaming error:", error)
       setMessages((prev) =>
@@ -213,7 +208,48 @@ const HomeContent = ({ isReset, promptValue, recentValue, isLogOut, setCheckIsLo
       setIsLoading(false)
     }
   }
-  
+  //  const handleSubmit = async (e: React.FormEvent) => {
+  //   e.preventDefault()
+  //   if (!inputValue.trim() || isLoading) return
+  //   const userInput = inputValue.trim()
+
+  //   // user message
+  //   const userMessage: Message = {
+  //     id: Date.now().toString(),
+  //     type: "user",
+  //     content: userInput,
+  //   }
+
+  //   setMessages((prev) => [...prev, userMessage])
+  //   setInputValue("")
+  //   setIsLoading(true)
+
+  //   // assistant placeholder
+  //   const assistantMessage: Message = {
+  //     id: (Date.now() + 1).toString(),
+  //     type: "assistant",
+  //     content: "",
+  //     thinking: "",
+  //     isStreaming: true,
+  //   }
+  //   setMessages((prev) => [...prev, assistantMessage])
+
+  //   try {
+  //     await simulateStreamingResponse(assistantMessage.id, userInput)
+  //   } catch (error) {
+  //     console.error("Streaming error:", error)
+  //     setMessages((prev) =>
+  //       prev.map((msg) =>
+  //         msg.id === assistantMessage.id
+  //           ? { ...msg, content: "Error occurred while processing your request.", isStreaming: false }
+  //           : msg,
+  //       ),
+  //     )
+  //   } finally {
+  //     setIsLoading(false)
+  //   }
+  // }
+
   // const parseStreamEvent = (line: string): StreamEvent | null => {
   //   if (line.startsWith("event: ")) {
   //     const event = line.substring(7);
@@ -274,669 +310,661 @@ const HomeContent = ({ isReset, promptValue, recentValue, isLogOut, setCheckIsLo
   const handleSubmitWrapper = () => { handleSubmit(new Event("submit") as any); };
 
 
-  // const simulateStreamingResponse = async (messageId: string, userInput: string) => {
+  //  const simulateStreamingResponse = async (messageId: string, userInput: string) => {
   //   try {
   //     if (!userInput) {
-  //       throw new Error("No user input found for streaming request");
+  //       throw new Error("No user input found for streaming request")
   //     }
-
-  //     // const apiUrl = `http://10.126.192.122:8690/stream?prompt=${encodeURIComponent(userInput)}`;
-  //     //   const response = await fetch(apiUrl, {
-  //     //     method: "GET",
-  //     //     headers: {
-  //     //       Accept: "application/json",
-  //     //       "Cache-Control": "no-cache",
-  //     //     },
-  //     //   });
 
   //     const response = await fetch("http://10.126.192.122:8690/stream", {
   //       method: "POST",
   //       headers: {
-  //         Accept: "application/json",   // or "text/event-stream"
+  //         Accept: "text/event-stream", // Changed to proper SSE content type
   //         "Content-Type": "application/json",
   //       },
   //       body: JSON.stringify({ prompt: userInput }),
-  //     });
+  //     })
 
   //     if (!response.ok) {
-  //       throw new Error(`HTTP error! status: ${response.status}`);
+  //       throw new Error(`HTTP error! status: ${response.status}`)
   //     }
   //     if (!response.body) {
-  //       throw new Error("No response body");
+  //       throw new Error("No response body")
   //     }
 
-  //     const reader = response.body.getReader();
-  //     const decoder = new TextDecoder();
+  //     const reader = response.body.getReader()
+  //     const decoder = new TextDecoder()
 
-  //     let currentEvent = "";
-  //     let streamingThinking = "";
-  //     let streamingText = "";
-  //     let sqlContent = "";
-  //     let finalThinking = "";
-  //     let finalText = "";
+  //     let currentEvent = ""
+  //     let streamingThinking = ""
+  //     let streamingText = ""
+  //     let sqlContent = ""
+  //     let finalThinking = ""
+  //     let finalText = ""
+  //     let buffer = "" // Added buffer for incomplete chunks
 
   //     while (true) {
-  //       const { done, value } = await reader.read();
-  //       if (done) break;
+  //       const { done, value } = await reader.read()
+  //       if (done) break
 
-  //       const chunk = decoder.decode(value, { stream: true });
-  //       const lines = chunk.split("\n");
+  //       const chunk = decoder.decode(value, { stream: true })
+  //       buffer += chunk // Accumulate chunks in buffer
+
+  //       const lines = buffer.split("\n")
+  //       buffer = lines.pop() || "" // Keep incomplete line in buffer
 
   //       for (const line of lines) {
-  //         const trimmedLine = line.trim();
-  //         if (!trimmedLine) continue;
+  //         const trimmedLine = line.trim()
+  //         if (!trimmedLine) continue
 
-  //         const parsed = parseStreamEvent(trimmedLine);
-  //         if (!parsed) continue;
+  //         const parsed = parseStreamEvent(trimmedLine)
+  //         if (!parsed) continue
 
   //         if (parsed.event !== "data") {
-  //           currentEvent = parsed.event;
-  //           continue;
+  //           currentEvent = parsed.event
+  //           continue
   //         }
 
-  //         const data = parsed.data;
+  //         const data = parsed.data
+  //         if (!data) continue
 
   //         switch (currentEvent) {
   //           case "response.thinking.delta":
   //             if (data.text) {
-  //               streamingThinking += data.text;
+  //               streamingThinking += data.text
   //               setMessages((prev) =>
   //                 prev.map((msg) => (msg.id === messageId ? { ...msg, thinking: streamingThinking } : msg)),
-  //               );
+  //               )
   //             }
-  //             break;
+  //             break
 
   //           case "response.thinking":
-  //             finalThinking = data.text;
-  //             break;
+  //             if (data.text) {
+  //               finalThinking = data.text
+  //               setMessages((prev) =>
+  //                 prev.map((msg) => (msg.id === messageId ? { ...msg, thinking: finalThinking } : msg)),
+  //               )
+  //             }
+  //             break
+
+  //           case "response.tool_use":
+  //             console.log("[v0] Tool use:", data)
+  //             break
 
   //           case "response.tool_result":
   //             if (data.content?.[0]?.json?.sql) {
-  //               sqlContent = data.content[0].json.sql;
+  //               sqlContent = data.content[0].json.sql
+  //             } else if (data.content?.[0]?.json?.result_set) {
+  //               // Handle result set data if needed
+  //               console.log("Tool result received:", data.content[0].json)
   //             }
-  //             break;
+  //             break
 
   //           case "response.text.delta":
   //             if (data.text) {
-  //               streamingText += data.text;
+  //               streamingText += data.text
   //               setMessages((prev) =>
   //                 prev.map((msg) => (msg.id === messageId ? { ...msg, content: streamingText, sql: sqlContent } : msg)),
-  //               );
+  //               )
   //             }
-  //             break;
+  //             break
 
   //           case "response.text":
-  //             finalText = data.text;
-  //             break;
+  //             if (data.text) {
+  //               finalText = data.text
+  //               setMessages((prev) =>
+  //                 prev.map((msg) => (msg.id === messageId ? { ...msg, content: finalText, sql: sqlContent } : msg)),
+  //               )
+  //             }
+  //             break
 
   //           case "response":
   //             if (data.content) {
-  //               const thinkingContent = data.content.find((item: any) => item.type === "thinking");
-  //               const textContent = data.content.find((item: any) => item.type === "text");
+  //               const thinkingContent = data.content.find((item: any) => item.type === "thinking")
+  //               const textContent = data.content.find((item: any) => item.type === "text")
 
   //               setMessages((prev) =>
   //                 prev.map((msg) =>
   //                   msg.id === messageId
   //                     ? {
-  //                       ...msg,
-  //                       thinking: thinkingContent?.thinking?.text || finalThinking,
-  //                       content: textContent?.text || finalText,
-  //                       sql: sqlContent,
-  //                       isStreaming: false,
-  //                       showDetails: false,
-  //                     }
+  //                         ...msg,
+  //                         thinking: thinkingContent?.thinking?.text || finalThinking,
+  //                         content: textContent?.text || finalText || streamingText,
+  //                         sql: sqlContent,
+  //                         isStreaming: false,
+  //                         showDetails: false,
+  //                       }
   //                     : msg,
   //                 ),
-  //               );
+  //               )
   //             }
-  //             return;
+  //             return
 
   //           case "done":
-  //             return;
+  //             setMessages((prev) =>
+  //               prev.map((msg) =>
+  //                 msg.id === messageId
+  //                   ? {
+  //                       ...msg,
+  //                       thinking: finalThinking || streamingThinking,
+  //                       content: finalText || streamingText,
+  //                       sql: sqlContent,
+  //                       isStreaming: false,
+  //                     }
+  //                   : msg,
+  //               ),
+  //             )
+  //             return
+
+  //           case "response.status":
+  //             if (data.message) {
+  //               console.log(`Status: ${data.message}`)
+  //             }
+  //             break
+
+  //           default:
+  //             // Log unhandled events for debugging
+  //             console.log(`Unhandled event: ${currentEvent}`, data)
+  //             break
   //         }
   //       }
   //     }
+
+  //     setMessages((prev) =>
+  //       prev.map((msg) =>
+  //         msg.id === messageId && msg.isStreaming
+  //           ? {
+  //               ...msg,
+  //               thinking: finalThinking || streamingThinking,
+  //               content: finalText || streamingText,
+  //               sql: sqlContent,
+  //               isStreaming: false,
+  //             }
+  //           : msg,
+  //       ),
+  //     )
   //   } catch (error) {
-  //     console.error("API streaming error:", error);
-  //     throw error;
+  //     console.error("API streaming error:", error)
+  //     throw error
   //   }
-  // };
+  // }
 
+  const simulateStreamingResponse = async (messageId: string, userInput: string) => {
 
-   const simulateStreamingResponse = async (messageId: string, userInput: string) => {
-    try {
-      if (!userInput) {
-        throw new Error("No user input found for streaming request")
-      }
+    const response = await fetch("http://10.126.192.122:8690/stream", {
+      method: "POST",
+      headers: {
+        Accept: "application/json", // Changed to proper SSE content type
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ prompt: userInput }),
+    })
 
-      const response = await fetch("http://10.126.192.122:8690/stream", {
-        method: "POST",
-        headers: {
-          Accept: "text/event-stream", // Changed to proper SSE content type
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ prompt: userInput }),
-      })
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+    if (!response.body) {
+      throw new Error("No response body")
+    }
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ""
+    let currentEvent = ""
+    let streamingThinking = ""
+    let streamingText = ""
+    let sqlContent = ""
+    let finalThinking = ""
+    let finalText = ""
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-      if (!response.body) {
-        throw new Error("No response body")
-      }
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
 
-      const reader = response.body.getReader()
-      const decoder = new TextDecoder()
+      // Decode the chunk and add to buffer
+      buffer += decoder.decode(value, { stream: true })
 
-      let currentEvent = ""
-      let streamingThinking = ""
-      let streamingText = ""
-      let sqlContent = ""
-      let finalThinking = ""
-      let finalText = ""
-      let buffer = "" // Added buffer for incomplete chunks
+      // Process complete lines
+      const lines = buffer.split("\n")
+      buffer = lines.pop() || "" // Keep incomplete line in buffer
 
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
+      for (const line of lines) {
+        const trimmedLine = line.trim()
+        if (!trimmedLine) continue
+        const parsed = parseStreamEvent(trimmedLine)
+        if (!parsed) continue
 
-        const chunk = decoder.decode(value, { stream: true })
-        buffer += chunk // Accumulate chunks in buffer
+        if (parsed.event !== "data") {
+          currentEvent = parsed.event
+          continue
+        }
 
-        const lines = buffer.split("\n")
-        buffer = lines.pop() || "" // Keep incomplete line in buffer
+        const data = parsed.data
 
-        for (const line of lines) {
-          const trimmedLine = line.trim()
-          if (!trimmedLine) continue
+        switch (currentEvent) {
+          case "response.thinking.delta":
+            if (data.text) {
+              streamingThinking += data.text
+              setMessages((prev) =>
+                prev.map((msg) => (msg.id === messageId ? { ...msg, thinking: streamingThinking } : msg)),
+              )
+            }
+            break
 
-          const parsed = parseStreamEvent(trimmedLine)
-          if (!parsed) continue
+          case "response.thinking":
+            finalThinking = data.text
+            break
 
-          if (parsed.event !== "data") {
-            currentEvent = parsed.event
-            continue
-          }
+          case "response.tool_result":
+            if (data.content && data.content[0] && data.content[0].json && data.content[0].json.sql) {
+              sqlContent = data.content[0].json.sql
+            }
+            break
 
-          const data = parsed.data
-          if (!data) continue
+          case "response.text.delta":
+            if (data.text) {
+              streamingText += data.text
+              setMessages((prev) =>
+                prev.map((msg) => (msg.id === messageId ? { ...msg, content: streamingText, sql: sqlContent } : msg)),
+              )
+            }
+            break
 
-          switch (currentEvent) {
-            case "response.thinking.delta":
-              if (data.text) {
-                streamingThinking += data.text
-                setMessages((prev) =>
-                  prev.map((msg) => (msg.id === messageId ? { ...msg, thinking: streamingThinking } : msg)),
-                )
-              }
-              break
+          case "response.text":
+            finalText = data.text
+            break
 
-            case "response.thinking":
-              if (data.text) {
-                finalThinking = data.text
-                setMessages((prev) =>
-                  prev.map((msg) => (msg.id === messageId ? { ...msg, thinking: finalThinking } : msg)),
-                )
-              }
-              break
+          case "response":
+            if (data.content) {
+              const thinkingContent = data.content.find((item: any) => item.type === "thinking")
+              const textContent = data.content.find((item: any) => item.type === "text")
 
-            case "response.tool_result":
-              if (data.content?.[0]?.json?.sql) {
-                sqlContent = data.content[0].json.sql
-              } else if (data.content?.[0]?.json?.result_set) {
-                // Handle result set data if needed
-                console.log("Tool result received:", data.content[0].json)
-              }
-              break
-
-            case "response.text.delta":
-              if (data.text) {
-                streamingText += data.text
-                setMessages((prev) =>
-                  prev.map((msg) => (msg.id === messageId ? { ...msg, content: streamingText, sql: sqlContent } : msg)),
-                )
-              }
-              break
-
-            case "response.text":
-              if (data.text) {
-                finalText = data.text
-                setMessages((prev) =>
-                  prev.map((msg) => (msg.id === messageId ? { ...msg, content: finalText, sql: sqlContent } : msg)),
-                )
-              }
-              break
-
-            case "response":
-              if (data.content) {
-                const thinkingContent = data.content.find((item: any) => item.type === "thinking")
-                const textContent = data.content.find((item: any) => item.type === "text")
-
-                setMessages((prev) =>
-                  prev.map((msg) =>
-                    msg.id === messageId
-                      ? {
-                          ...msg,
-                          thinking: thinkingContent?.thinking?.text || finalThinking,
-                          content: textContent?.text || finalText || streamingText,
-                          sql: sqlContent,
-                          isStreaming: false,
-                          showDetails: false,
-                        }
-                      : msg,
-                  ),
-                )
-              }
-              return
-
-            case "done":
               setMessages((prev) =>
                 prev.map((msg) =>
                   msg.id === messageId
                     ? {
-                        ...msg,
-                        thinking: finalThinking || streamingThinking,
-                        content: finalText || streamingText,
-                        sql: sqlContent,
-                        isStreaming: false,
-                      }
+                      ...msg,
+                      thinking: thinkingContent?.thinking?.text || finalThinking,
+                      content: textContent?.text || finalText,
+                      sql: sqlContent,
+                      isStreaming: false,
+                      showDetails: false,
+                    }
                     : msg,
                 ),
               )
-              return
+            }
+            return // Exit the loop when we get the final response
 
-            case "response.status":
-              if (data.message) {
-                console.log(`Status: ${data.message}`)
-              }
-              break
-
-            default:
-              // Log unhandled events for debugging
-              console.log(`Unhandled event: ${currentEvent}`, data)
-              break
-          }
+          case "done":
+            return
         }
+
+        // Add delay to simulate real streaming
+        await new Promise((resolve) => setTimeout(resolve, 50))
       }
-
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === messageId && msg.isStreaming
-            ? {
-                ...msg,
-                thinking: finalThinking || streamingThinking,
-                content: finalText || streamingText,
-                sql: sqlContent,
-                isStreaming: false,
-              }
-            : msg,
-        ),
-      )
-    } catch (error) {
-      console.error("API streaming error:", error)
-      throw error
     }
-  }
-
-  const handleUpload = async (
-    type: "yaml" | "data",
-    triggerFileDialog: boolean = false,
-  ): Promise<void> => {
-    handleMenuClose();
-
-    if (triggerFileDialog) {
-      fileInputRef.current?.click();
-      return;
     }
 
-    if (type === "data") {
-      if (!selectedFile) {
+    const handleUpload = async (
+      type: "yaml" | "data",
+      triggerFileDialog: boolean = false,
+    ): Promise<void> => {
+      handleMenuClose();
+
+      if (triggerFileDialog) {
+        fileInputRef.current?.click();
         return;
       }
 
-      setIsUploading(true);
-      const formData = new FormData();
+      if (type === "data") {
+        if (!selectedFile) {
+          return;
+        }
 
-      const query = {
-        aplctn_cd: aplctnCdValue,
-        app_id: APP_ID,
-        api_key: API_KEY,
-        app_nm: APP_NM,
-        app_lvl_prefix: APP_LVL_PREFIX,
-        session_id: sessionId,
-      };
+        setIsUploading(true);
+        const formData = new FormData();
 
-      formData.append("query", JSON.stringify(query));
-      formData.append("files", selectedFile);
+        const query = {
+          aplctn_cd: aplctnCdValue,
+          app_id: APP_ID,
+          api_key: API_KEY,
+          app_nm: APP_NM,
+          app_lvl_prefix: APP_LVL_PREFIX,
+          session_id: sessionId,
+        };
 
-      try {
-        const response = await axios.post(
-          `${API_BASE_URL}${ENDPOINTS.UPLOAD_URL}`,
-          formData,
-          {
-            headers: {
-              "Content-Type": "multipart/form-data",
+        formData.append("query", JSON.stringify(query));
+        formData.append("files", selectedFile);
+
+        try {
+          const response = await axios.post(
+            `${API_BASE_URL}${ENDPOINTS.UPLOAD_URL}`,
+            formData,
+            {
+              headers: {
+                "Content-Type": "multipart/form-data",
+              },
             },
-          },
+          );
+
+          const successMessage = response?.data?.message || "File uploaded successfully!";
+          toast.success(successMessage, { position: "top-right" });
+          setSelectedFile(null);
+        } catch (error) {
+          console.error("Upload error:", error);
+          toast.error("Upload failed. Please try again.", { position: "top-right" });
+        } finally {
+          setIsUploading(false);
+        }
+      } else if (type === "yaml") {
+        window.open(
+          "https://app.snowflake.com/carelon/eda_preprod/#/data/databases/POC_SPC_SNOWPARK_DB/schemas/HEDIS_SCHEMA/stage/HEDIS_STAGE_FULL",
+          "_blank",
         );
-
-        const successMessage = response?.data?.message || "File uploaded successfully!";
-        toast.success(successMessage, { position: "top-right" });
-        setSelectedFile(null);
-      } catch (error) {
-        console.error("Upload error:", error);
-        toast.error("Upload failed. Please try again.", { position: "top-right" });
-      } finally {
-        setIsUploading(false);
       }
-    } else if (type === "yaml") {
-      window.open(
-        "https://app.snowflake.com/carelon/eda_preprod/#/data/databases/POC_SPC_SNOWPARK_DB/schemas/HEDIS_SCHEMA/stage/HEDIS_STAGE_FULL",
-        "_blank",
+    };
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      setSelectedFile(file);
+      handleUpload("data");
+    };
+
+    //   const executeSQL = async (sqlQuery: any) => {
+    //     console.log(sqlQuery);
+    //     setIsLoading(true);
+
+    //     const payload = buildPayload({
+    //       prompt: storedPrompt,
+    //       execSQL: sqlQuery.sqlQuery,
+    //       sessionId,
+    //       minimal: true,
+    //       selectedAppId,
+    //       user_nm,
+    //       user_pwd,
+    //       database_nm: dbDetails.database_nm,
+    //       schema_nm: dbDetails.schema_nm,
+    //       app_lvl_prefix: appLvlPrefix,
+    //     });
+    //     const { data, error } = await sendRequest(
+    //       `${API_BASE_URL}${ENDPOINTS.RUN_SQL_QUERY}`,
+    //       payload,
+    //     );
+    //     if (error || !data) {
+    //      setMessages((prev) => [
+    //   ...prev,
+    //   {
+    //     id: Date.now().toString(),
+    //     type: "assistant",
+    //     text: "Error communicating with backend.",
+    //     fromUser: false,
+    //     showExecute: false,
+    //     showSummarize: false,
+    //   },
+    // ]);
+
+    //       console.error("Error:", error);
+    //       setIsLoading(false);
+    //       return;
+    //     }
+
+    //     const convertToString = (input: any): string => {
+    //       if (input === null || input === undefined) return "";
+    //       if (typeof input === "string") return input;
+    //       if (Array.isArray(input)) return input.map(convertToString).join(", ");
+    //       if (typeof input === "object")
+    //         return Object.entries(input)
+    //           .map(([k, v]) => `${k}: ${convertToString(v)}`)
+    //           .join(", ");
+    //       return String(input);
+    //     };
+    //     let modelReply: string | React.ReactNode = "";
+    //     modelReply = typeof data === "string" ? data : convertToString(data);
+    //     setData(data);
+    //     handleVegaLiteRequest(sqlQuery.prompt, sqlQuery.sqlQuery)
+    //     console.log(data);
+    //     setMessages((prev) => [
+    //       ...prev,
+    //       {
+    //        id: Date.now().toString(),
+    //     type: "assistant",
+    //     text: modelReply,
+    //     fromUser: false,
+    //     executedResponse: data,
+    //     messageType: "table",
+    //     showExecute: false,
+    //     showSummarize: true,
+    //     prompt: sqlQuery.prompt,
+    //       },
+    //     ]);
+    //     setIsLoading(false);
+    //   };
+
+    // const apiCortex = async (message: any) => {
+    //   console.log(message);
+    //   setIsLoading(true);
+    //   setMessages((prev) =>
+    //     prev.map((msg) => {
+    //       const isSameResponse =
+    //         JSON.stringify(msg.executedResponse) === JSON.stringify(message.executedResponse);
+
+    //       if (msg.fromUser === false && msg.showSummarize && isSameResponse) {
+    //         return { ...msg, showSummarize: false };
+    //       }
+    //       return msg;
+    //     }),
+    //   );
+
+    //   const payload = buildPayload({
+    //     method: "cortex",
+    //     model: "llama3.1-70b",
+    //     prompt: storedPrompt,
+    //     sysMsg:
+    //       "You are powerful AI assistant in providing accurate answers always. Be Concise in providing answers based on context.",
+    //     responseData: message.executedResponse,
+    //     sessionId,
+    //     selectedAppId,
+    //     app_lvl_prefix: appLvlPrefix,
+
+    //   });
+
+    //   const { stream, error } = await sendRequest(
+    //     `${API_BASE_URL}${ENDPOINTS.CORTEX_COMPLETE}`,
+    //     payload,
+    //     undefined,
+    //     true,
+    //   );
+
+    //   if (!stream || error) {
+    //     console.error("Streaming error:", error);
+    //     setMessages((prev) => [
+    //       ...prev,
+    //       { text: "An error occurred while summarizing.", fromUser: false },
+    //     ]);
+    //     setIsLoading(false);
+    //     return;
+    //   }
+
+    //   let streamedText = "";
+
+    //   await handleStream(stream, {
+    //     fromUser: false,
+    //     streaming: true,
+    //     onToken: (token: string) => {
+    //       const endIndex = token.indexOf("end_of_stream");
+    //       if (endIndex !== -1) {
+    //         token = token.substring(0, endIndex);
+    //       }
+
+    //       if (token) {
+    //         streamedText += token;
+    //         setMessages((prev) => {
+    //           const updated = [...prev];
+    //           const lastIndex = updated.length - 1;
+    //           if (lastIndex >= 0 && updated[lastIndex].streaming) {
+    //             updated[lastIndex] = {
+    //               ...updated[lastIndex],
+    //               text: streamedText,
+    //             };
+    //           } else {
+    //             updated.push({
+    //               text: token,
+    //               fromUser: false,
+    //               streaming: true,
+    //               type: "text",
+    //               showSummarize: false,
+    //               prompt: message.prompt,
+    //               fdbck_id: message.fdbck_id,
+    //               session_id: message.session_id,
+    //             });
+    //           }
+    //           return updated;
+    //         });
+    //       }
+    //     },
+    //     onComplete: (response: any) => {
+    //       setMessages((prev) =>
+    //         prev.map((msg) => {
+    //           const isSameResponse =
+    //             JSON.stringify(msg.executedResponse) === JSON.stringify(message.executedResponse);
+
+    //           if (msg.fromUser === false && msg.showSummarize && isSameResponse) {
+    //             return {
+    //               ...msg,
+    //               streaming: false,
+    //               summarized: true,
+    //               showSummarize: false,
+    //               showFeedback: true,
+    //               fdbck_id: response.fdbck_id,
+    //               session_id: response.session_id,
+    //             };
+    //           }
+    //           return msg;
+    //         }),
+    //       );
+    //       setIsLoading(false);
+    //     },
+    //   });
+    // };
+
+    // const handleVegaLiteRequest = async (promptText: any, sqlQuery: any) => {
+    //   const payload = buildPayload({
+    //     selectedAppId,
+    //     sessionId,
+    //     prompt: promptText,
+    //     execSQL: sqlQuery,
+    //     minimal: true,
+    //     user_nm,
+    //     user_pwd,
+    //     database_nm: dbDetails.database_nm,
+    //     schema_nm: dbDetails.schema_nm,
+    //     app_lvl_prefix: appLvlPrefix,
+
+    //   });
+
+    //   try {
+    //     const response = await axios.post(
+    //       `${API_BASE_URL}${ENDPOINTS.GET_VEGALITE_JSON}`,
+    //       payload,
+    //       // {
+    //       //   headers: {
+    //       //     "Content-Type": "application/json",
+    //       //   },
+    //       // }
+    //     );
+    //     if (response.status === 200 && response.data) {
+    //       setVegaChartData(response.data);
+    //     } else {
+    //       console.error("Failed to generate Vega-Lite chart.");
+    //     }
+    //   } catch (err) {
+    //     console.error("VegaLite API error:", err);
+    //   }
+    // };
+
+    useEffect(() => {
+      const anchor = document.getElementById("scroll-anchor");
+      if (anchor) anchor.scrollIntoView({ behavior: "smooth" });
+    }, [messages.length]);
+
+    const handleReset = () => {
+      setInputValue("");
+      setMessages([]);
+      setSubmitted(false);
+      setData(null);
+      setSelectedFile(null);
+      setIsUploading(false);
+      setIsLoading(false);
+      setStoredPrompt("");
+      if (isReset) {
+        setDbDetails({ database_nm: "", schema_nm: "" });
+      }
+    };
+
+    useEffect(() => {
+      handleReset();
+    }, [isReset]);
+
+    useEffect(() => {
+      const InputVal = promptValue ? promptValue : "";
+      setInputValue(InputVal);
+    }, [promptValue]);
+
+    useEffect(() => {
+      if (recentValue) {
+        /** Recent code flow will come here */
+      }
+    }, [recentValue]);
+
+    const toggleDetails = (messageId: string) => {
+      setMessages((prev) =>
+        prev.map((msg) => (msg.id === messageId ? { ...msg, showDetails: !msg.showDetails } : msg)),
       );
-    }
-  };
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setSelectedFile(file);
-    handleUpload("data");
-  };
+    };
 
-  //   const executeSQL = async (sqlQuery: any) => {
-  //     console.log(sqlQuery);
-  //     setIsLoading(true);
-
-  //     const payload = buildPayload({
-  //       prompt: storedPrompt,
-  //       execSQL: sqlQuery.sqlQuery,
-  //       sessionId,
-  //       minimal: true,
-  //       selectedAppId,
-  //       user_nm,
-  //       user_pwd,
-  //       database_nm: dbDetails.database_nm,
-  //       schema_nm: dbDetails.schema_nm,
-  //       app_lvl_prefix: appLvlPrefix,
-  //     });
-  //     const { data, error } = await sendRequest(
-  //       `${API_BASE_URL}${ENDPOINTS.RUN_SQL_QUERY}`,
-  //       payload,
-  //     );
-  //     if (error || !data) {
-  //      setMessages((prev) => [
-  //   ...prev,
-  //   {
-  //     id: Date.now().toString(),
-  //     type: "assistant",
-  //     text: "Error communicating with backend.",
-  //     fromUser: false,
-  //     showExecute: false,
-  //     showSummarize: false,
-  //   },
-  // ]);
-
-  //       console.error("Error:", error);
-  //       setIsLoading(false);
-  //       return;
-  //     }
-
-  //     const convertToString = (input: any): string => {
-  //       if (input === null || input === undefined) return "";
-  //       if (typeof input === "string") return input;
-  //       if (Array.isArray(input)) return input.map(convertToString).join(", ");
-  //       if (typeof input === "object")
-  //         return Object.entries(input)
-  //           .map(([k, v]) => `${k}: ${convertToString(v)}`)
-  //           .join(", ");
-  //       return String(input);
-  //     };
-  //     let modelReply: string | React.ReactNode = "";
-  //     modelReply = typeof data === "string" ? data : convertToString(data);
-  //     setData(data);
-  //     handleVegaLiteRequest(sqlQuery.prompt, sqlQuery.sqlQuery)
-  //     console.log(data);
-  //     setMessages((prev) => [
-  //       ...prev,
-  //       {
-  //        id: Date.now().toString(),
-  //     type: "assistant",
-  //     text: modelReply,
-  //     fromUser: false,
-  //     executedResponse: data,
-  //     messageType: "table",
-  //     showExecute: false,
-  //     showSummarize: true,
-  //     prompt: sqlQuery.prompt,
-  //       },
-  //     ]);
-  //     setIsLoading(false);
-  //   };
-
-  // const apiCortex = async (message: any) => {
-  //   console.log(message);
-  //   setIsLoading(true);
-  //   setMessages((prev) =>
-  //     prev.map((msg) => {
-  //       const isSameResponse =
-  //         JSON.stringify(msg.executedResponse) === JSON.stringify(message.executedResponse);
-
-  //       if (msg.fromUser === false && msg.showSummarize && isSameResponse) {
-  //         return { ...msg, showSummarize: false };
-  //       }
-  //       return msg;
-  //     }),
-  //   );
-
-  //   const payload = buildPayload({
-  //     method: "cortex",
-  //     model: "llama3.1-70b",
-  //     prompt: storedPrompt,
-  //     sysMsg:
-  //       "You are powerful AI assistant in providing accurate answers always. Be Concise in providing answers based on context.",
-  //     responseData: message.executedResponse,
-  //     sessionId,
-  //     selectedAppId,
-  //     app_lvl_prefix: appLvlPrefix,
-
-  //   });
-
-  //   const { stream, error } = await sendRequest(
-  //     `${API_BASE_URL}${ENDPOINTS.CORTEX_COMPLETE}`,
-  //     payload,
-  //     undefined,
-  //     true,
-  //   );
-
-  //   if (!stream || error) {
-  //     console.error("Streaming error:", error);
-  //     setMessages((prev) => [
-  //       ...prev,
-  //       { text: "An error occurred while summarizing.", fromUser: false },
-  //     ]);
-  //     setIsLoading(false);
-  //     return;
-  //   }
-
-  //   let streamedText = "";
-
-  //   await handleStream(stream, {
-  //     fromUser: false,
-  //     streaming: true,
-  //     onToken: (token: string) => {
-  //       const endIndex = token.indexOf("end_of_stream");
-  //       if (endIndex !== -1) {
-  //         token = token.substring(0, endIndex);
-  //       }
-
-  //       if (token) {
-  //         streamedText += token;
-  //         setMessages((prev) => {
-  //           const updated = [...prev];
-  //           const lastIndex = updated.length - 1;
-  //           if (lastIndex >= 0 && updated[lastIndex].streaming) {
-  //             updated[lastIndex] = {
-  //               ...updated[lastIndex],
-  //               text: streamedText,
-  //             };
-  //           } else {
-  //             updated.push({
-  //               text: token,
-  //               fromUser: false,
-  //               streaming: true,
-  //               type: "text",
-  //               showSummarize: false,
-  //               prompt: message.prompt,
-  //               fdbck_id: message.fdbck_id,
-  //               session_id: message.session_id,
-  //             });
-  //           }
-  //           return updated;
-  //         });
-  //       }
-  //     },
-  //     onComplete: (response: any) => {
-  //       setMessages((prev) =>
-  //         prev.map((msg) => {
-  //           const isSameResponse =
-  //             JSON.stringify(msg.executedResponse) === JSON.stringify(message.executedResponse);
-
-  //           if (msg.fromUser === false && msg.showSummarize && isSameResponse) {
-  //             return {
-  //               ...msg,
-  //               streaming: false,
-  //               summarized: true,
-  //               showSummarize: false,
-  //               showFeedback: true,
-  //               fdbck_id: response.fdbck_id,
-  //               session_id: response.session_id,
-  //             };
-  //           }
-  //           return msg;
-  //         }),
-  //       );
-  //       setIsLoading(false);
-  //     },
-  //   });
-  // };
-
-  // const handleVegaLiteRequest = async (promptText: any, sqlQuery: any) => {
-  //   const payload = buildPayload({
-  //     selectedAppId,
-  //     sessionId,
-  //     prompt: promptText,
-  //     execSQL: sqlQuery,
-  //     minimal: true,
-  //     user_nm,
-  //     user_pwd,
-  //     database_nm: dbDetails.database_nm,
-  //     schema_nm: dbDetails.schema_nm,
-  //     app_lvl_prefix: appLvlPrefix,
-
-  //   });
-
-  //   try {
-  //     const response = await axios.post(
-  //       `${API_BASE_URL}${ENDPOINTS.GET_VEGALITE_JSON}`,
-  //       payload,
-  //       // {
-  //       //   headers: {
-  //       //     "Content-Type": "application/json",
-  //       //   },
-  //       // }
-  //     );
-  //     if (response.status === 200 && response.data) {
-  //       setVegaChartData(response.data);
-  //     } else {
-  //       console.error("Failed to generate Vega-Lite chart.");
-  //     }
-  //   } catch (err) {
-  //     console.error("VegaLite API error:", err);
-  //   }
-  // };
-
-  useEffect(() => {
-    const anchor = document.getElementById("scroll-anchor");
-    if (anchor) anchor.scrollIntoView({ behavior: "smooth" });
-  }, [messages.length]);
-
-  const handleReset = () => {
-    setInputValue("");
-    setMessages([]);
-    setSubmitted(false);
-    setData(null);
-    setSelectedFile(null);
-    setIsUploading(false);
-    setIsLoading(false);
-    setStoredPrompt("");
-    if (isReset) {
-      setDbDetails({ database_nm: "", schema_nm: "" });
-    }
-  };
-
-  useEffect(() => {
-    handleReset();
-  }, [isReset]);
-
-  useEffect(() => {
-    const InputVal = promptValue ? promptValue : "";
-    setInputValue(InputVal);
-  }, [promptValue]);
-
-  useEffect(() => {
-    if (recentValue) {
-      /** Recent code flow will come here */
-    }
-  }, [recentValue]);
-
-  const toggleDetails = (messageId: string) => {
-    setMessages((prev) =>
-      prev.map((msg) => (msg.id === messageId ? { ...msg, showDetails: !msg.showDetails } : msg)),
+    return (
+      <MainContent
+        collapsed={collapsed}
+        toggleSidebar={toggleSidebar}
+        inputValue={inputValue}
+        messages={messages}
+        anchorEls={anchorEls}
+        fileLists={fileLists}
+        setFileLists={setFileLists}
+        selectedModels={selectedModels}
+        handleMenuClick={handleMenuClick}
+        handleMenuClose={handleMenuClose}
+        handleModelSelect={handleModelSelect}
+        handleInputChange={handleInputChange}
+        handleSubmit={handleSubmitWrapper}
+        isLoading={isLoading}
+        fileInputRef={fileInputRef}
+        selectedFile={selectedFile}
+        isUploading={isUploading}
+        handleFileChange={handleFileChange}
+        handleUpload={handleUpload}
+        data={data}
+        setSelectedFile={setSelectedFile}
+        // executeSQL={executeSQL}
+        // apiCortex={apiCortex}
+        submitted={submitted}
+        setSubmitted={setSubmitted}
+        open={open}
+        dbDetails={dbDetails}
+        setDbDetails={setDbDetails}
+        user_nm={user_nm}
+        user_pwd={user_pwd}
+        setUserNm={setUserNm}
+        setUserPwd={setUserPwd}
+        setCheckIsLogin={setCheckIsLogin}
+        isLogOut={isLogOut}
+        vegaChartData={vegaChartData}
+        setVegaChartData={setVegaChartData}
+        isReset={isReset}
+        toggleDetails={toggleDetails}
+      />
     );
   };
+  
 
-  return (
-    <MainContent
-      collapsed={collapsed}
-      toggleSidebar={toggleSidebar}
-      inputValue={inputValue}
-      messages={messages}
-      anchorEls={anchorEls}
-      fileLists={fileLists}
-      setFileLists={setFileLists}
-      selectedModels={selectedModels}
-      handleMenuClick={handleMenuClick}
-      handleMenuClose={handleMenuClose}
-      handleModelSelect={handleModelSelect}
-      handleInputChange={handleInputChange}
-      handleSubmit={handleSubmitWrapper}
-      isLoading={isLoading}
-      fileInputRef={fileInputRef}
-      selectedFile={selectedFile}
-      isUploading={isUploading}
-      handleFileChange={handleFileChange}
-      handleUpload={handleUpload}
-      data={data}
-      setSelectedFile={setSelectedFile}
-      // executeSQL={executeSQL}
-      // apiCortex={apiCortex}
-      submitted={submitted}
-      setSubmitted={setSubmitted}
-      open={open}
-      dbDetails={dbDetails}
-      setDbDetails={setDbDetails}
-      user_nm={user_nm}
-      user_pwd={user_pwd}
-      setUserNm={setUserNm}
-      setUserPwd={setUserPwd}
-      setCheckIsLogin={setCheckIsLogin}
-      isLogOut={isLogOut}
-      vegaChartData={vegaChartData}
-      setVegaChartData={setVegaChartData}
-      isReset={isReset}
-      toggleDetails={toggleDetails}
-    />
-  );
-};
-
-export default HomeContent;
+  export default HomeContent;
