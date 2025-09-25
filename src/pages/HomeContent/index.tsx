@@ -65,7 +65,7 @@ const HomeContent = ({ isReset, promptValue, recentValue, isLogOut, setCheckIsLo
   const [inputValue, setInputValue] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const { sendRequest } = useApiRequest();
-const [messages, setMessages] = useState<MessageType[]>([]);
+  const [messages, setMessages] = useState<MessageType[]>([]);
   const { handleStream } = useStreamHandler(setMessages);
   const [data, setData] = useState<any>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -100,12 +100,12 @@ const [messages, setMessages] = useState<MessageType[]>([]);
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [vegaChartData, setVegaChartData] = useState<any>(null);
-   const aplctnCdValue =
-  selectedAppId === "POCGENAI"
-    ? "edagnai"
-    : selectedAppId.toLowerCase();
+  const aplctnCdValue =
+    selectedAppId === "POCGENAI"
+      ? "edagnai"
+      : selectedAppId.toLowerCase();
 
-   useEffect(() => {
+  useEffect(() => {
     setDbDetails((prev) => ({
       ...prev,
       schema_nm: "",
@@ -126,8 +126,9 @@ const [messages, setMessages] = useState<MessageType[]>([]);
     }
   };
   const handleMenuClose = () =>
-    setAnchorEls({ account: null, chat: null, search: null, upload: null, schema: null, environment: null
- });
+    setAnchorEls({
+      account: null, chat: null, search: null, upload: null, schema: null, environment: null
+    });
   // const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => { const file = e.target.files?.[0]; if (file) setSelectedFile(file); };
   const handleModelSelect = (file: string, type: keyof SelectedModelState) => {
     setSelectedModels((prev) => ({
@@ -168,7 +169,7 @@ const [messages, setMessages] = useState<MessageType[]>([]);
     return null;
   };
 
- const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputValue.trim() || isLoading) return;
 
@@ -214,9 +215,15 @@ const [messages, setMessages] = useState<MessageType[]>([]);
 
   const simulateStreamingResponse = async (messageId: string) => {
     try {
-      const userInput = messages[messages.length - 2]?.content 
-               || messages[messages.length - 2]?.text 
-               || "";
+      const lastUserMessage = [...messages].reverse().find((msg) => msg.type === "user");
+
+      const userInput =
+        lastUserMessage?.content || lastUserMessage?.text || "";
+
+      if (!userInput) {
+        throw new Error("No user input found for streaming request");
+      }
+
 
       const apiUrl = `http://10.126.192.122:8690/stream?prompt=${encodeURIComponent(userInput)}`;
 
@@ -308,13 +315,13 @@ const [messages, setMessages] = useState<MessageType[]>([]);
                   prev.map((msg) =>
                     msg.id === messageId
                       ? {
-                          ...msg,
-                          thinking: thinkingContent?.thinking?.text || finalThinking,
-                          content: textContent?.text || finalText,
-                          sql: sqlContent,
-                          isStreaming: false,
-                          showDetails: false,
-                        }
+                        ...msg,
+                        thinking: thinkingContent?.thinking?.text || finalThinking,
+                        content: textContent?.text || finalText,
+                        sql: sqlContent,
+                        isStreaming: false,
+                        showDetails: false,
+                      }
                       : msg,
                   ),
                 );
@@ -398,75 +405,75 @@ const [messages, setMessages] = useState<MessageType[]>([]);
     handleUpload("data");
   };
 
-//   const executeSQL = async (sqlQuery: any) => {
-//     console.log(sqlQuery);
-//     setIsLoading(true);
+  //   const executeSQL = async (sqlQuery: any) => {
+  //     console.log(sqlQuery);
+  //     setIsLoading(true);
 
-//     const payload = buildPayload({
-//       prompt: storedPrompt,
-//       execSQL: sqlQuery.sqlQuery,
-//       sessionId,
-//       minimal: true,
-//       selectedAppId,
-//       user_nm,
-//       user_pwd,
-//       database_nm: dbDetails.database_nm,
-//       schema_nm: dbDetails.schema_nm,
-//       app_lvl_prefix: appLvlPrefix,
-//     });
-//     const { data, error } = await sendRequest(
-//       `${API_BASE_URL}${ENDPOINTS.RUN_SQL_QUERY}`,
-//       payload,
-//     );
-//     if (error || !data) {
-//      setMessages((prev) => [
-//   ...prev,
-//   {
-//     id: Date.now().toString(),
-//     type: "assistant",
-//     text: "Error communicating with backend.",
-//     fromUser: false,
-//     showExecute: false,
-//     showSummarize: false,
-//   },
-// ]);
+  //     const payload = buildPayload({
+  //       prompt: storedPrompt,
+  //       execSQL: sqlQuery.sqlQuery,
+  //       sessionId,
+  //       minimal: true,
+  //       selectedAppId,
+  //       user_nm,
+  //       user_pwd,
+  //       database_nm: dbDetails.database_nm,
+  //       schema_nm: dbDetails.schema_nm,
+  //       app_lvl_prefix: appLvlPrefix,
+  //     });
+  //     const { data, error } = await sendRequest(
+  //       `${API_BASE_URL}${ENDPOINTS.RUN_SQL_QUERY}`,
+  //       payload,
+  //     );
+  //     if (error || !data) {
+  //      setMessages((prev) => [
+  //   ...prev,
+  //   {
+  //     id: Date.now().toString(),
+  //     type: "assistant",
+  //     text: "Error communicating with backend.",
+  //     fromUser: false,
+  //     showExecute: false,
+  //     showSummarize: false,
+  //   },
+  // ]);
 
-//       console.error("Error:", error);
-//       setIsLoading(false);
-//       return;
-//     }
+  //       console.error("Error:", error);
+  //       setIsLoading(false);
+  //       return;
+  //     }
 
-//     const convertToString = (input: any): string => {
-//       if (input === null || input === undefined) return "";
-//       if (typeof input === "string") return input;
-//       if (Array.isArray(input)) return input.map(convertToString).join(", ");
-//       if (typeof input === "object")
-//         return Object.entries(input)
-//           .map(([k, v]) => `${k}: ${convertToString(v)}`)
-//           .join(", ");
-//       return String(input);
-//     };
-//     let modelReply: string | React.ReactNode = "";
-//     modelReply = typeof data === "string" ? data : convertToString(data);
-//     setData(data);
-//     handleVegaLiteRequest(sqlQuery.prompt, sqlQuery.sqlQuery)
-//     console.log(data);
-//     setMessages((prev) => [
-//       ...prev,
-//       {
-//        id: Date.now().toString(),
-//     type: "assistant",
-//     text: modelReply,
-//     fromUser: false,
-//     executedResponse: data,
-//     messageType: "table",
-//     showExecute: false,
-//     showSummarize: true,
-//     prompt: sqlQuery.prompt,
-//       },
-//     ]);
-//     setIsLoading(false);
-//   };
+  //     const convertToString = (input: any): string => {
+  //       if (input === null || input === undefined) return "";
+  //       if (typeof input === "string") return input;
+  //       if (Array.isArray(input)) return input.map(convertToString).join(", ");
+  //       if (typeof input === "object")
+  //         return Object.entries(input)
+  //           .map(([k, v]) => `${k}: ${convertToString(v)}`)
+  //           .join(", ");
+  //       return String(input);
+  //     };
+  //     let modelReply: string | React.ReactNode = "";
+  //     modelReply = typeof data === "string" ? data : convertToString(data);
+  //     setData(data);
+  //     handleVegaLiteRequest(sqlQuery.prompt, sqlQuery.sqlQuery)
+  //     console.log(data);
+  //     setMessages((prev) => [
+  //       ...prev,
+  //       {
+  //        id: Date.now().toString(),
+  //     type: "assistant",
+  //     text: modelReply,
+  //     fromUser: false,
+  //     executedResponse: data,
+  //     messageType: "table",
+  //     showExecute: false,
+  //     showSummarize: true,
+  //     prompt: sqlQuery.prompt,
+  //       },
+  //     ]);
+  //     setIsLoading(false);
+  //   };
 
   // const apiCortex = async (message: any) => {
   //   console.log(message);
@@ -644,7 +651,7 @@ const [messages, setMessages] = useState<MessageType[]>([]);
     }
   }, [recentValue]);
 
- const toggleDetails = (messageId: string) => {
+  const toggleDetails = (messageId: string) => {
     setMessages((prev) =>
       prev.map((msg) => (msg.id === messageId ? { ...msg, showDetails: !msg.showDetails } : msg)),
     );
