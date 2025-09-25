@@ -1,10 +1,10 @@
 import { lazy, Suspense } from "react";
 import { Helmet } from "react-helmet-async";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import Spinner from "components/Spinner";
 
 const Home = lazy(() => import("pages/Home"));
 
-import Spinner from "components/Spinner";
 
 function ReactRoute() {
   return (

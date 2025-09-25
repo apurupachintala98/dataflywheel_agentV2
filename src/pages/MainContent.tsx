@@ -39,7 +39,8 @@ import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 interface MainContentProps {
   messages: MessageType[];
   collapsed: boolean;
-  toggleSidebar: () => void;
+   toggleSidebar: () => void; 
+  toggleDetails: (messageId: string) => void;
   inputValue: string;
   anchorEls: {
     account: HTMLElement | null;
@@ -74,8 +75,8 @@ interface MainContentProps {
   handleUpload: (type: "yaml" | "data", triggerFileDialog?: boolean) => void;
   data: any;
   setSelectedFile: (file: File | null) => void;
-  executeSQL: (sqlQuery: any) => Promise<void>;
-  apiCortex: (message: any) => Promise<void>;
+  // executeSQL: (sqlQuery: any) => Promise<void>;
+  // apiCortex: (message: any) => Promise<void>;
   submitted: boolean;
   setSubmitted: React.Dispatch<React.SetStateAction<boolean>>;
   open: boolean;
@@ -126,8 +127,8 @@ const MainContent = ({
   submitted,
   handleUpload,
   setSelectedFile,
-  executeSQL,
-  apiCortex,
+  // executeSQL,
+  // apiCortex,
   open,
   data,
   user_nm,
@@ -704,8 +705,8 @@ const MainContent = ({
                     ) : (
                       <MessageWithFeedback
                         message={message}
-                        executeSQL={executeSQL}
-                        apiCortex={apiCortex}
+                        // executeSQL={executeSQL}
+                        // apiCortex={apiCortex}
                         handleGraphClick={handleGraphClick}
                       />
                     )}

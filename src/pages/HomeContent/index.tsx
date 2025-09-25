@@ -3,8 +3,9 @@ import { ToastContainer, toast } from "react-toastify";
 import { HashLoader } from "react-spinners";
 import ApiService from "../../services/index";
 import MainContent from "../MainContent";
-import "react-toastify/dist/ReactToastify.css";
+// import "react-toastify/dist/ReactToastify.css";
 import axios from "axios";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../../components/ui/accordion"
 import BarChartIcon from "@mui/icons-material/BarChart";
 import {
   Button,
@@ -41,13 +42,30 @@ interface AnchorElState {
 
 }
 
+
+interface StreamEvent {
+  event: string
+  data: any
+}
+
+interface Message {
+  id: string
+  type: "user" | "assistant"
+  content: string
+  thinking?: string
+  sql?: string
+  isStreaming?: boolean
+  showDetails?: boolean
+}
+
+
 const HomeContent = ({ isReset, promptValue, recentValue, isLogOut, setCheckIsLogin }: HomeContentProps) => {
   const [collapsed, setCollapsed] = useState(false);
   const toggleSidebar = () => setCollapsed((prev) => !prev);
   const [inputValue, setInputValue] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const { sendRequest } = useApiRequest();
-  const [messages, setMessages] = useState<MessageType[]>([]);
+const [messages, setMessages] = useState<MessageType[]>([]);
   const { handleStream } = useStreamHandler(setMessages);
   const [data, setData] = useState<any>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -60,6 +78,8 @@ const HomeContent = ({ isReset, promptValue, recentValue, isLogOut, setCheckIsLo
   const { APP_ID, API_KEY, DEFAULT_MODEL, APP_NM, DATABASE_NAME, SCHEMA_NAME, APP_LVL_PREFIX } = APP_CONFIG;
   const [user_nm, setUserNm] = useState("");
   const [user_pwd, setUserPwd] = useState("");
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+
   const [anchorEls, setAnchorEls] = useState<AnchorElState>({
     account: null,
     chat: null,
@@ -120,128 +140,198 @@ const HomeContent = ({ isReset, promptValue, recentValue, isLogOut, setCheckIsLo
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) =>
     setInputValue(e.target.value);
 
-  const handleSubmit = async () => {
-    if (selectedFile) {
-      await handleUpload("data");
-      return;
-    }
-    if (!inputValue.trim()) return;
-    setIsLoading(true);
-    const userMessage = { text: inputValue, fromUser: true };
-    const assistantPlaceholder = { text: "", fromUser: false, streaming: true };
 
-    setMessages((prev) => [...prev, userMessage, assistantPlaceholder]);
-    setInputValue("");
-    setSubmitted(true);
 
-    const payload = buildPayload({
-      prompt: inputValue,
-      semanticModel: selectedModels.yaml,
-      searchModel: selectedModels.search,
-      model: DEFAULT_MODEL,
-      sessionId,
-      selectedAppId,
-      database_nm: dbDetails.database_nm,
-      schema_nm: dbDetails.schema_nm,
-      app_lvl_prefix: appLvlPrefix,
-    });
+  // ***new streaming code ****
 
-    const endpoint = ENDPOINTS.AGENT
-      ? `${API_BASE_URL}${ENDPOINTS.AGENT}`
-      : `${API_BASE_URL}${ENDPOINTS.TEXT_TO_SQL}`;
-
-    const { stream, error } = await sendRequest(endpoint, payload, undefined, true);
-
-    if (!stream || error) {
-      //toast.error("Something went wrong.");
-      setMessages((prev) => [...prev, { text: "Something went wrong. Please try again later.", fromUser: false }]);
-      setIsLoading(false);
-      return;
-    }
-
-    await handleStream(stream, {
-      fromUser: false,
-      streaming: true,
-      onComplete: async (response: any) => {
-        if (response.prompt) {
-          setStoredPrompt(response.prompt);
-        }
-        if (response.type === "text") {
-          if (response.citations?.length) {
-            const html = renderTextWithCitations(response.text, response.citations);
-            setMessages((prev) => {
-              const temp = [...prev];
-              temp[temp.length - 1] = {
-                ...temp[temp.length - 1],
-                text: html,
-                streaming: false,
-                isHTML: true,
-                type: "text",
-                fdbck_id: response.fdbck_id,
-                session_id: response.session_id,
-              };
-              return temp;
-            });
-          } else {
-            setMessages((prev) => {
-              const temp = [...prev];
-              temp[temp.length - 1] = {
-                ...temp[temp.length - 1],
-                text: response.text,
-                streaming: false,
-                type: "text",
-                fdbck_id: response.fdbck_id,
-                session_id: response.session_id,
-              };
-              return temp;
-            });
-          }
-        } else if (response.type === "sql") {
-          const rawText = response.text;
-          const [interpretationPart, sqlPart] = rawText.split("end_of_interpretation");
-          // const interpretation = (interpretationPart || '').trim();
-          const interpretationRaw = (interpretationPart || "").trim();
-          const INTERPRETATION_PREFIX = "This is our interpretation of your question:";
-          let interpretation = interpretationRaw;
-
-          if (interpretationRaw.startsWith(INTERPRETATION_PREFIX)) {
-            const remaining = interpretationRaw.slice(INTERPRETATION_PREFIX.length).trim();
-            interpretation = `<strong>${INTERPRETATION_PREFIX}</strong><br/>${remaining}`;
-          }
-
-          const sql = (sqlPart || "").trim();
-          const sqlMessage: MessageType = {
-            text: sql,
-            fromUser: false,
-            isCode: true,
-            showExecute: true,
-            sqlQuery: sql,
-            type: "sql",
-            interpretation,
-            isHTML: true,
-            streaming: false,
-            fdbck_id: response.fdbck_id,
-            session_id: response.session_id,
-          };
-          console.log("sqlMessage", sqlMessage);
-
-          setMessages((prev) => {
-            const temp = [...prev];
-            const last = temp[temp.length - 1];
-
-            if (last?.streaming && !last.fromUser) {
-              temp[temp.length - 1] = sqlMessage;
-            } else {
-              temp.push(sqlMessage);
-            }
-
-            return temp;
-          });
-        }
-        setIsLoading(false);
-      },
-    });
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const parseStreamEvent = (line: string): StreamEvent | null => {
+    if (line.startsWith("event: ")) {
+      const event = line.substring(7);
+      return { event, data: null };
+    }
+    if (line.startsWith("data: ")) {
+      try {
+        const data = JSON.parse(line.substring(6));
+        return { event: "data", data };
+      } catch (e) {
+        return { event: "data", data: line.substring(6) };
+      }
+    }
+    return null;
+  };
+
+ const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inputValue.trim() || isLoading) return;
+
+    // user message
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      type: "user",
+      content: inputValue.trim(),
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    setInputValue("");
+    setIsLoading(true);
+
+    // assistant placeholder
+    const assistantMessage: Message = {
+      id: (Date.now() + 1).toString(),
+      type: "assistant",
+      content: "",
+      thinking: "",
+      isStreaming: true,
+    };
+    setMessages((prev) => [...prev, assistantMessage]);
+
+    try {
+      await simulateStreamingResponse(assistantMessage.id);
+    } catch (error) {
+      console.error("Streaming error:", error);
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === assistantMessage.id
+            ? { ...msg, content: "Error occurred while processing your request.", isStreaming: false }
+            : msg,
+        ),
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSubmitWrapper = () => { handleSubmit(new Event("submit") as any); };
+
+
+  const simulateStreamingResponse = async (messageId: string) => {
+    try {
+      const userInput = messages[messages.length - 2]?.content 
+               || messages[messages.length - 2]?.text 
+               || "";
+
+      const apiUrl = `http://10.126.192.122:8690/stream?prompt=${encodeURIComponent(userInput)}`;
+
+      const response = await fetch(apiUrl, {
+        method: "GET",
+        headers: {
+          Accept: "text/event-stream",
+          "Cache-Control": "no-cache",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      if (!response.body) {
+        throw new Error("No response body");
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+
+      let currentEvent = "";
+      let streamingThinking = "";
+      let streamingText = "";
+      let sqlContent = "";
+      let finalThinking = "";
+      let finalText = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split("\n");
+
+        for (const line of lines) {
+          const trimmedLine = line.trim();
+          if (!trimmedLine) continue;
+
+          const parsed = parseStreamEvent(trimmedLine);
+          if (!parsed) continue;
+
+          if (parsed.event !== "data") {
+            currentEvent = parsed.event;
+            continue;
+          }
+
+          const data = parsed.data;
+
+          switch (currentEvent) {
+            case "response.thinking.delta":
+              if (data.text) {
+                streamingThinking += data.text;
+                setMessages((prev) =>
+                  prev.map((msg) => (msg.id === messageId ? { ...msg, thinking: streamingThinking } : msg)),
+                );
+              }
+              break;
+
+            case "response.thinking":
+              finalThinking = data.text;
+              break;
+
+            case "response.tool_result":
+              if (data.content?.[0]?.json?.sql) {
+                sqlContent = data.content[0].json.sql;
+              }
+              break;
+
+            case "response.text.delta":
+              if (data.text) {
+                streamingText += data.text;
+                setMessages((prev) =>
+                  prev.map((msg) => (msg.id === messageId ? { ...msg, content: streamingText, sql: sqlContent } : msg)),
+                );
+              }
+              break;
+
+            case "response.text":
+              finalText = data.text;
+              break;
+
+            case "response":
+              if (data.content) {
+                const thinkingContent = data.content.find((item: any) => item.type === "thinking");
+                const textContent = data.content.find((item: any) => item.type === "text");
+
+                setMessages((prev) =>
+                  prev.map((msg) =>
+                    msg.id === messageId
+                      ? {
+                          ...msg,
+                          thinking: thinkingContent?.thinking?.text || finalThinking,
+                          content: textContent?.text || finalText,
+                          sql: sqlContent,
+                          isStreaming: false,
+                          showDetails: false,
+                        }
+                      : msg,
+                  ),
+                );
+              }
+              return;
+
+            case "done":
+              return;
+          }
+        }
+      }
+    } catch (error) {
+      console.error("API streaming error:", error);
+      throw error;
+    }
+  };
+
 
   const handleUpload = async (
     type: "yaml" | "data",
@@ -308,212 +398,217 @@ const HomeContent = ({ isReset, promptValue, recentValue, isLogOut, setCheckIsLo
     handleUpload("data");
   };
 
-  const executeSQL = async (sqlQuery: any) => {
-    console.log(sqlQuery);
-    setIsLoading(true);
+//   const executeSQL = async (sqlQuery: any) => {
+//     console.log(sqlQuery);
+//     setIsLoading(true);
 
-    const payload = buildPayload({
-      prompt: storedPrompt,
-      execSQL: sqlQuery.sqlQuery,
-      sessionId,
-      minimal: true,
-      selectedAppId,
-      user_nm,
-      user_pwd,
-      database_nm: dbDetails.database_nm,
-      schema_nm: dbDetails.schema_nm,
-      app_lvl_prefix: appLvlPrefix,
-    });
-    const { data, error } = await sendRequest(
-      `${API_BASE_URL}${ENDPOINTS.RUN_SQL_QUERY}`,
-      payload,
-    );
-    if (error || !data) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          text: "Error communicating with backend.",
-          fromUser: false,
-          showExecute: false,
-          showSummarize: false,
-        },
-      ]);
-      console.error("Error:", error);
-      setIsLoading(false);
-      return;
-    }
+//     const payload = buildPayload({
+//       prompt: storedPrompt,
+//       execSQL: sqlQuery.sqlQuery,
+//       sessionId,
+//       minimal: true,
+//       selectedAppId,
+//       user_nm,
+//       user_pwd,
+//       database_nm: dbDetails.database_nm,
+//       schema_nm: dbDetails.schema_nm,
+//       app_lvl_prefix: appLvlPrefix,
+//     });
+//     const { data, error } = await sendRequest(
+//       `${API_BASE_URL}${ENDPOINTS.RUN_SQL_QUERY}`,
+//       payload,
+//     );
+//     if (error || !data) {
+//      setMessages((prev) => [
+//   ...prev,
+//   {
+//     id: Date.now().toString(),
+//     type: "assistant",
+//     text: "Error communicating with backend.",
+//     fromUser: false,
+//     showExecute: false,
+//     showSummarize: false,
+//   },
+// ]);
 
-    const convertToString = (input: any): string => {
-      if (input === null || input === undefined) return "";
-      if (typeof input === "string") return input;
-      if (Array.isArray(input)) return input.map(convertToString).join(", ");
-      if (typeof input === "object")
-        return Object.entries(input)
-          .map(([k, v]) => `${k}: ${convertToString(v)}`)
-          .join(", ");
-      return String(input);
-    };
-    let modelReply: string | React.ReactNode = "";
-    modelReply = typeof data === "string" ? data : convertToString(data);
-    setData(data);
-    handleVegaLiteRequest(sqlQuery.prompt, sqlQuery.sqlQuery)
-    console.log(data);
-    setMessages((prev) => [
-      ...prev,
-      {
-        text: modelReply,
-        fromUser: false,
-        executedResponse: data,
-        type: "table",
-        showExecute: false,
-        showSummarize: true,
-        prompt: sqlQuery.prompt,
-      },
-    ]);
-    setIsLoading(false);
-  };
+//       console.error("Error:", error);
+//       setIsLoading(false);
+//       return;
+//     }
 
-  const apiCortex = async (message: any) => {
-    console.log(message);
-    setIsLoading(true);
-    setMessages((prev) =>
-      prev.map((msg) => {
-        const isSameResponse =
-          JSON.stringify(msg.executedResponse) === JSON.stringify(message.executedResponse);
+//     const convertToString = (input: any): string => {
+//       if (input === null || input === undefined) return "";
+//       if (typeof input === "string") return input;
+//       if (Array.isArray(input)) return input.map(convertToString).join(", ");
+//       if (typeof input === "object")
+//         return Object.entries(input)
+//           .map(([k, v]) => `${k}: ${convertToString(v)}`)
+//           .join(", ");
+//       return String(input);
+//     };
+//     let modelReply: string | React.ReactNode = "";
+//     modelReply = typeof data === "string" ? data : convertToString(data);
+//     setData(data);
+//     handleVegaLiteRequest(sqlQuery.prompt, sqlQuery.sqlQuery)
+//     console.log(data);
+//     setMessages((prev) => [
+//       ...prev,
+//       {
+//        id: Date.now().toString(),
+//     type: "assistant",
+//     text: modelReply,
+//     fromUser: false,
+//     executedResponse: data,
+//     messageType: "table",
+//     showExecute: false,
+//     showSummarize: true,
+//     prompt: sqlQuery.prompt,
+//       },
+//     ]);
+//     setIsLoading(false);
+//   };
 
-        if (msg.fromUser === false && msg.showSummarize && isSameResponse) {
-          return { ...msg, showSummarize: false };
-        }
-        return msg;
-      }),
-    );
+  // const apiCortex = async (message: any) => {
+  //   console.log(message);
+  //   setIsLoading(true);
+  //   setMessages((prev) =>
+  //     prev.map((msg) => {
+  //       const isSameResponse =
+  //         JSON.stringify(msg.executedResponse) === JSON.stringify(message.executedResponse);
 
-    const payload = buildPayload({
-      method: "cortex",
-      model: "llama3.1-70b",
-      prompt: storedPrompt,
-      sysMsg:
-        "You are powerful AI assistant in providing accurate answers always. Be Concise in providing answers based on context.",
-      responseData: message.executedResponse,
-      sessionId,
-      selectedAppId,
-      app_lvl_prefix: appLvlPrefix,
+  //       if (msg.fromUser === false && msg.showSummarize && isSameResponse) {
+  //         return { ...msg, showSummarize: false };
+  //       }
+  //       return msg;
+  //     }),
+  //   );
 
-    });
+  //   const payload = buildPayload({
+  //     method: "cortex",
+  //     model: "llama3.1-70b",
+  //     prompt: storedPrompt,
+  //     sysMsg:
+  //       "You are powerful AI assistant in providing accurate answers always. Be Concise in providing answers based on context.",
+  //     responseData: message.executedResponse,
+  //     sessionId,
+  //     selectedAppId,
+  //     app_lvl_prefix: appLvlPrefix,
 
-    const { stream, error } = await sendRequest(
-      `${API_BASE_URL}${ENDPOINTS.CORTEX_COMPLETE}`,
-      payload,
-      undefined,
-      true,
-    );
+  //   });
 
-    if (!stream || error) {
-      console.error("Streaming error:", error);
-      setMessages((prev) => [
-        ...prev,
-        { text: "An error occurred while summarizing.", fromUser: false },
-      ]);
-      setIsLoading(false);
-      return;
-    }
+  //   const { stream, error } = await sendRequest(
+  //     `${API_BASE_URL}${ENDPOINTS.CORTEX_COMPLETE}`,
+  //     payload,
+  //     undefined,
+  //     true,
+  //   );
 
-    let streamedText = "";
+  //   if (!stream || error) {
+  //     console.error("Streaming error:", error);
+  //     setMessages((prev) => [
+  //       ...prev,
+  //       { text: "An error occurred while summarizing.", fromUser: false },
+  //     ]);
+  //     setIsLoading(false);
+  //     return;
+  //   }
 
-    await handleStream(stream, {
-      fromUser: false,
-      streaming: true,
-      onToken: (token: string) => {
-        const endIndex = token.indexOf("end_of_stream");
-        if (endIndex !== -1) {
-          token = token.substring(0, endIndex);
-        }
+  //   let streamedText = "";
 
-        if (token) {
-          streamedText += token;
-          setMessages((prev) => {
-            const updated = [...prev];
-            const lastIndex = updated.length - 1;
-            if (lastIndex >= 0 && updated[lastIndex].streaming) {
-              updated[lastIndex] = {
-                ...updated[lastIndex],
-                text: streamedText,
-              };
-            } else {
-              updated.push({
-                text: token,
-                fromUser: false,
-                streaming: true,
-                type: "text",
-                showSummarize: false,
-                prompt: message.prompt,
-                fdbck_id: message.fdbck_id,
-                session_id: message.session_id,
-              });
-            }
-            return updated;
-          });
-        }
-      },
-      onComplete: (response: any) => {
-        setMessages((prev) =>
-          prev.map((msg) => {
-            const isSameResponse =
-              JSON.stringify(msg.executedResponse) === JSON.stringify(message.executedResponse);
+  //   await handleStream(stream, {
+  //     fromUser: false,
+  //     streaming: true,
+  //     onToken: (token: string) => {
+  //       const endIndex = token.indexOf("end_of_stream");
+  //       if (endIndex !== -1) {
+  //         token = token.substring(0, endIndex);
+  //       }
 
-            if (msg.fromUser === false && msg.showSummarize && isSameResponse) {
-              return {
-                ...msg,
-                streaming: false,
-                summarized: true,
-                showSummarize: false,
-                showFeedback: true,
-                fdbck_id: response.fdbck_id,
-                session_id: response.session_id,
-              };
-            }
-            return msg;
-          }),
-        );
-        setIsLoading(false);
-      },
-    });
-  };
+  //       if (token) {
+  //         streamedText += token;
+  //         setMessages((prev) => {
+  //           const updated = [...prev];
+  //           const lastIndex = updated.length - 1;
+  //           if (lastIndex >= 0 && updated[lastIndex].streaming) {
+  //             updated[lastIndex] = {
+  //               ...updated[lastIndex],
+  //               text: streamedText,
+  //             };
+  //           } else {
+  //             updated.push({
+  //               text: token,
+  //               fromUser: false,
+  //               streaming: true,
+  //               type: "text",
+  //               showSummarize: false,
+  //               prompt: message.prompt,
+  //               fdbck_id: message.fdbck_id,
+  //               session_id: message.session_id,
+  //             });
+  //           }
+  //           return updated;
+  //         });
+  //       }
+  //     },
+  //     onComplete: (response: any) => {
+  //       setMessages((prev) =>
+  //         prev.map((msg) => {
+  //           const isSameResponse =
+  //             JSON.stringify(msg.executedResponse) === JSON.stringify(message.executedResponse);
 
-  const handleVegaLiteRequest = async (promptText: any, sqlQuery: any) => {
-    const payload = buildPayload({
-      selectedAppId,
-      sessionId,
-      prompt: promptText,
-      execSQL: sqlQuery,
-      minimal: true,
-      user_nm,
-      user_pwd,
-      database_nm: dbDetails.database_nm,
-      schema_nm: dbDetails.schema_nm,
-      app_lvl_prefix: appLvlPrefix,
+  //           if (msg.fromUser === false && msg.showSummarize && isSameResponse) {
+  //             return {
+  //               ...msg,
+  //               streaming: false,
+  //               summarized: true,
+  //               showSummarize: false,
+  //               showFeedback: true,
+  //               fdbck_id: response.fdbck_id,
+  //               session_id: response.session_id,
+  //             };
+  //           }
+  //           return msg;
+  //         }),
+  //       );
+  //       setIsLoading(false);
+  //     },
+  //   });
+  // };
 
-    });
+  // const handleVegaLiteRequest = async (promptText: any, sqlQuery: any) => {
+  //   const payload = buildPayload({
+  //     selectedAppId,
+  //     sessionId,
+  //     prompt: promptText,
+  //     execSQL: sqlQuery,
+  //     minimal: true,
+  //     user_nm,
+  //     user_pwd,
+  //     database_nm: dbDetails.database_nm,
+  //     schema_nm: dbDetails.schema_nm,
+  //     app_lvl_prefix: appLvlPrefix,
 
-    try {
-      const response = await axios.post(
-        `${API_BASE_URL}${ENDPOINTS.GET_VEGALITE_JSON}`,
-        payload,
-        // {
-        //   headers: {
-        //     "Content-Type": "application/json",
-        //   },
-        // }
-      );
-      if (response.status === 200 && response.data) {
-        setVegaChartData(response.data);
-      } else {
-        console.error("Failed to generate Vega-Lite chart.");
-      }
-    } catch (err) {
-      console.error("VegaLite API error:", err);
-    }
-  };
+  //   });
+
+  //   try {
+  //     const response = await axios.post(
+  //       `${API_BASE_URL}${ENDPOINTS.GET_VEGALITE_JSON}`,
+  //       payload,
+  //       // {
+  //       //   headers: {
+  //       //     "Content-Type": "application/json",
+  //       //   },
+  //       // }
+  //     );
+  //     if (response.status === 200 && response.data) {
+  //       setVegaChartData(response.data);
+  //     } else {
+  //       console.error("Failed to generate Vega-Lite chart.");
+  //     }
+  //   } catch (err) {
+  //     console.error("VegaLite API error:", err);
+  //   }
+  // };
 
   useEffect(() => {
     const anchor = document.getElementById("scroll-anchor");
@@ -549,6 +644,12 @@ const HomeContent = ({ isReset, promptValue, recentValue, isLogOut, setCheckIsLo
     }
   }, [recentValue]);
 
+ const toggleDetails = (messageId: string) => {
+    setMessages((prev) =>
+      prev.map((msg) => (msg.id === messageId ? { ...msg, showDetails: !msg.showDetails } : msg)),
+    );
+  };
+
   return (
     <MainContent
       collapsed={collapsed}
@@ -563,7 +664,7 @@ const HomeContent = ({ isReset, promptValue, recentValue, isLogOut, setCheckIsLo
       handleMenuClose={handleMenuClose}
       handleModelSelect={handleModelSelect}
       handleInputChange={handleInputChange}
-      handleSubmit={handleSubmit}
+      handleSubmit={handleSubmitWrapper}
       isLoading={isLoading}
       fileInputRef={fileInputRef}
       selectedFile={selectedFile}
@@ -572,8 +673,8 @@ const HomeContent = ({ isReset, promptValue, recentValue, isLogOut, setCheckIsLo
       handleUpload={handleUpload}
       data={data}
       setSelectedFile={setSelectedFile}
-      executeSQL={executeSQL}
-      apiCortex={apiCortex}
+      // executeSQL={executeSQL}
+      // apiCortex={apiCortex}
       submitted={submitted}
       setSubmitted={setSubmitted}
       open={open}
@@ -588,6 +689,7 @@ const HomeContent = ({ isReset, promptValue, recentValue, isLogOut, setCheckIsLo
       vegaChartData={vegaChartData}
       setVegaChartData={setVegaChartData}
       isReset={isReset}
+      toggleDetails={toggleDetails}
     />
   );
 };
