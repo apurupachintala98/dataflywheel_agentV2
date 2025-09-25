@@ -172,12 +172,12 @@ const HomeContent = ({ isReset, promptValue, recentValue, isLogOut, setCheckIsLo
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputValue.trim() || isLoading) return;
-
+    const userInput = inputValue.trim(); 
     // user message
     const userMessage: Message = {
       id: Date.now().toString(),
       type: "user",
-      content: inputValue.trim(),
+      content: userInput,
     };
 
     setMessages((prev) => [...prev, userMessage]);
@@ -195,7 +195,7 @@ const HomeContent = ({ isReset, promptValue, recentValue, isLogOut, setCheckIsLo
     setMessages((prev) => [...prev, assistantMessage]);
 
     try {
-      await simulateStreamingResponse(assistantMessage.id);
+      await simulateStreamingResponse(assistantMessage.id, userInput);
     } catch (error) {
       console.error("Streaming error:", error);
       setMessages((prev) =>
@@ -213,20 +213,13 @@ const HomeContent = ({ isReset, promptValue, recentValue, isLogOut, setCheckIsLo
   const handleSubmitWrapper = () => { handleSubmit(new Event("submit") as any); };
 
 
-  const simulateStreamingResponse = async (messageId: string) => {
+  const simulateStreamingResponse = async (messageId: string, userInput: string) => {
     try {
-      const lastUserMessage = [...messages].reverse().find((msg) => msg.type === "user");
-
-      const userInput =
-        lastUserMessage?.content || lastUserMessage?.text || "";
-
       if (!userInput) {
-        throw new Error("No user input found for streaming request");
-      }
+      throw new Error("No user input found for streaming request");
+    }
 
-
-      const apiUrl = `http://10.126.192.122:8690/stream?prompt=${encodeURIComponent(userInput)}`;
-
+    const apiUrl = `http://10.126.192.122:8690/stream?prompt=${encodeURIComponent(userInput)}`;
       const response = await fetch(apiUrl, {
         method: "GET",
         headers: {
