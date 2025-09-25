@@ -153,36 +153,40 @@ const HomeContent = ({ isReset, promptValue, recentValue, isLogOut, setCheckIsLo
     scrollToBottom();
   }, [messages]);
 
-  const parseStreamEvent = (line: string): StreamEvent | null => {
+  const parseStreamEvent = (line: string) => {
     if (line.startsWith("event: ")) {
-      const event = line.substring(7);
-      return { event, data: null };
+      return { event: line.substring(7).trim(), data: null }
     }
     if (line.startsWith("data: ")) {
       try {
-        const data = JSON.parse(line.substring(6));
-        return { event: "data", data };
-      } catch (e) {
-        return { event: "data", data: line.substring(6) };
+        const dataStr = line.substring(6).trim()
+        if (dataStr === "[DONE]") {
+          return { event: "done", data: null }
+        }
+        return { event: "data", data: JSON.parse(dataStr) }
+      } catch (error) {
+        console.error("Failed to parse data:", error)
+        return null
       }
     }
-    return null;
-  };
+    return null
+  }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputValue.trim() || isLoading) return;
-    const userInput = inputValue.trim();
+   const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!inputValue.trim() || isLoading) return
+    const userInput = inputValue.trim()
+
     // user message
     const userMessage: Message = {
       id: Date.now().toString(),
       type: "user",
       content: userInput,
-    };
+    }
 
-    setMessages((prev) => [...prev, userMessage]);
-    setInputValue("");
-    setIsLoading(true);
+    setMessages((prev) => [...prev, userMessage])
+    setInputValue("")
+    setIsLoading(true)
 
     // assistant placeholder
     const assistantMessage: Message = {
@@ -191,156 +195,388 @@ const HomeContent = ({ isReset, promptValue, recentValue, isLogOut, setCheckIsLo
       content: "",
       thinking: "",
       isStreaming: true,
-    };
-    setMessages((prev) => [...prev, assistantMessage]);
+    }
+    setMessages((prev) => [...prev, assistantMessage])
 
     try {
-      await simulateStreamingResponse(assistantMessage.id, userInput);
+      await simulateStreamingResponse(assistantMessage.id, userInput)
     } catch (error) {
-      console.error("Streaming error:", error);
+      console.error("Streaming error:", error)
       setMessages((prev) =>
         prev.map((msg) =>
           msg.id === assistantMessage.id
             ? { ...msg, content: "Error occurred while processing your request.", isStreaming: false }
             : msg,
         ),
-      );
+      )
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
+  
+  // const parseStreamEvent = (line: string): StreamEvent | null => {
+  //   if (line.startsWith("event: ")) {
+  //     const event = line.substring(7);
+  //     return { event, data: null };
+  //   }
+  //   if (line.startsWith("data: ")) {
+  //     try {
+  //       const data = JSON.parse(line.substring(6));
+  //       return { event: "data", data };
+  //     } catch (e) {
+  //       return { event: "data", data: line.substring(6) };
+  //     }
+  //   }
+  //   return null;
+  // };
+
+  // const handleSubmit = async (e: React.FormEvent) => {
+  //   e.preventDefault();
+  //   if (!inputValue.trim() || isLoading) return;
+  //   const userInput = inputValue.trim();
+  //   // user message
+  //   const userMessage: Message = {
+  //     id: Date.now().toString(),
+  //     type: "user",
+  //     content: userInput,
+  //   };
+
+  //   setMessages((prev) => [...prev, userMessage]);
+  //   setInputValue("");
+  //   setIsLoading(true);
+
+  //   // assistant placeholder
+  //   const assistantMessage: Message = {
+  //     id: (Date.now() + 1).toString(),
+  //     type: "assistant",
+  //     content: "",
+  //     thinking: "",
+  //     isStreaming: true,
+  //   };
+  //   setMessages((prev) => [...prev, assistantMessage]);
+
+  //   try {
+  //     await simulateStreamingResponse(assistantMessage.id, userInput);
+  //   } catch (error) {
+  //     console.error("Streaming error:", error);
+  //     setMessages((prev) =>
+  //       prev.map((msg) =>
+  //         msg.id === assistantMessage.id
+  //           ? { ...msg, content: "Error occurred while processing your request.", isStreaming: false }
+  //           : msg,
+  //       ),
+  //     );
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
 
   const handleSubmitWrapper = () => { handleSubmit(new Event("submit") as any); };
 
 
-  const simulateStreamingResponse = async (messageId: string, userInput: string) => {
+  // const simulateStreamingResponse = async (messageId: string, userInput: string) => {
+  //   try {
+  //     if (!userInput) {
+  //       throw new Error("No user input found for streaming request");
+  //     }
+
+  //     // const apiUrl = `http://10.126.192.122:8690/stream?prompt=${encodeURIComponent(userInput)}`;
+  //     //   const response = await fetch(apiUrl, {
+  //     //     method: "GET",
+  //     //     headers: {
+  //     //       Accept: "application/json",
+  //     //       "Cache-Control": "no-cache",
+  //     //     },
+  //     //   });
+
+  //     const response = await fetch("http://10.126.192.122:8690/stream", {
+  //       method: "POST",
+  //       headers: {
+  //         Accept: "application/json",   // or "text/event-stream"
+  //         "Content-Type": "application/json",
+  //       },
+  //       body: JSON.stringify({ prompt: userInput }),
+  //     });
+
+  //     if (!response.ok) {
+  //       throw new Error(`HTTP error! status: ${response.status}`);
+  //     }
+  //     if (!response.body) {
+  //       throw new Error("No response body");
+  //     }
+
+  //     const reader = response.body.getReader();
+  //     const decoder = new TextDecoder();
+
+  //     let currentEvent = "";
+  //     let streamingThinking = "";
+  //     let streamingText = "";
+  //     let sqlContent = "";
+  //     let finalThinking = "";
+  //     let finalText = "";
+
+  //     while (true) {
+  //       const { done, value } = await reader.read();
+  //       if (done) break;
+
+  //       const chunk = decoder.decode(value, { stream: true });
+  //       const lines = chunk.split("\n");
+
+  //       for (const line of lines) {
+  //         const trimmedLine = line.trim();
+  //         if (!trimmedLine) continue;
+
+  //         const parsed = parseStreamEvent(trimmedLine);
+  //         if (!parsed) continue;
+
+  //         if (parsed.event !== "data") {
+  //           currentEvent = parsed.event;
+  //           continue;
+  //         }
+
+  //         const data = parsed.data;
+
+  //         switch (currentEvent) {
+  //           case "response.thinking.delta":
+  //             if (data.text) {
+  //               streamingThinking += data.text;
+  //               setMessages((prev) =>
+  //                 prev.map((msg) => (msg.id === messageId ? { ...msg, thinking: streamingThinking } : msg)),
+  //               );
+  //             }
+  //             break;
+
+  //           case "response.thinking":
+  //             finalThinking = data.text;
+  //             break;
+
+  //           case "response.tool_result":
+  //             if (data.content?.[0]?.json?.sql) {
+  //               sqlContent = data.content[0].json.sql;
+  //             }
+  //             break;
+
+  //           case "response.text.delta":
+  //             if (data.text) {
+  //               streamingText += data.text;
+  //               setMessages((prev) =>
+  //                 prev.map((msg) => (msg.id === messageId ? { ...msg, content: streamingText, sql: sqlContent } : msg)),
+  //               );
+  //             }
+  //             break;
+
+  //           case "response.text":
+  //             finalText = data.text;
+  //             break;
+
+  //           case "response":
+  //             if (data.content) {
+  //               const thinkingContent = data.content.find((item: any) => item.type === "thinking");
+  //               const textContent = data.content.find((item: any) => item.type === "text");
+
+  //               setMessages((prev) =>
+  //                 prev.map((msg) =>
+  //                   msg.id === messageId
+  //                     ? {
+  //                       ...msg,
+  //                       thinking: thinkingContent?.thinking?.text || finalThinking,
+  //                       content: textContent?.text || finalText,
+  //                       sql: sqlContent,
+  //                       isStreaming: false,
+  //                       showDetails: false,
+  //                     }
+  //                     : msg,
+  //                 ),
+  //               );
+  //             }
+  //             return;
+
+  //           case "done":
+  //             return;
+  //         }
+  //       }
+  //     }
+  //   } catch (error) {
+  //     console.error("API streaming error:", error);
+  //     throw error;
+  //   }
+  // };
+
+
+   const simulateStreamingResponse = async (messageId: string, userInput: string) => {
     try {
       if (!userInput) {
-        throw new Error("No user input found for streaming request");
+        throw new Error("No user input found for streaming request")
       }
-
-      // const apiUrl = `http://10.126.192.122:8690/stream?prompt=${encodeURIComponent(userInput)}`;
-      //   const response = await fetch(apiUrl, {
-      //     method: "GET",
-      //     headers: {
-      //       Accept: "application/json",
-      //       "Cache-Control": "no-cache",
-      //     },
-      //   });
 
       const response = await fetch("http://10.126.192.122:8690/stream", {
         method: "POST",
         headers: {
-          Accept: "application/json",   // or "text/event-stream"
+          Accept: "text/event-stream", // Changed to proper SSE content type
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ prompt: userInput }),
-      });
+      })
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error(`HTTP error! status: ${response.status}`)
       }
       if (!response.body) {
-        throw new Error("No response body");
+        throw new Error("No response body")
       }
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
 
-      let currentEvent = "";
-      let streamingThinking = "";
-      let streamingText = "";
-      let sqlContent = "";
-      let finalThinking = "";
-      let finalText = "";
+      let currentEvent = ""
+      let streamingThinking = ""
+      let streamingText = ""
+      let sqlContent = ""
+      let finalThinking = ""
+      let finalText = ""
+      let buffer = "" // Added buffer for incomplete chunks
 
       while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+        const { done, value } = await reader.read()
+        if (done) break
 
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split("\n");
+        const chunk = decoder.decode(value, { stream: true })
+        buffer += chunk // Accumulate chunks in buffer
+
+        const lines = buffer.split("\n")
+        buffer = lines.pop() || "" // Keep incomplete line in buffer
 
         for (const line of lines) {
-          const trimmedLine = line.trim();
-          if (!trimmedLine) continue;
+          const trimmedLine = line.trim()
+          if (!trimmedLine) continue
 
-          const parsed = parseStreamEvent(trimmedLine);
-          if (!parsed) continue;
+          const parsed = parseStreamEvent(trimmedLine)
+          if (!parsed) continue
 
           if (parsed.event !== "data") {
-            currentEvent = parsed.event;
-            continue;
+            currentEvent = parsed.event
+            continue
           }
 
-          const data = parsed.data;
+          const data = parsed.data
+          if (!data) continue
 
           switch (currentEvent) {
             case "response.thinking.delta":
               if (data.text) {
-                streamingThinking += data.text;
+                streamingThinking += data.text
                 setMessages((prev) =>
                   prev.map((msg) => (msg.id === messageId ? { ...msg, thinking: streamingThinking } : msg)),
-                );
+                )
               }
-              break;
+              break
 
             case "response.thinking":
-              finalThinking = data.text;
-              break;
+              if (data.text) {
+                finalThinking = data.text
+                setMessages((prev) =>
+                  prev.map((msg) => (msg.id === messageId ? { ...msg, thinking: finalThinking } : msg)),
+                )
+              }
+              break
 
             case "response.tool_result":
               if (data.content?.[0]?.json?.sql) {
-                sqlContent = data.content[0].json.sql;
+                sqlContent = data.content[0].json.sql
+              } else if (data.content?.[0]?.json?.result_set) {
+                // Handle result set data if needed
+                console.log("Tool result received:", data.content[0].json)
               }
-              break;
+              break
 
             case "response.text.delta":
               if (data.text) {
-                streamingText += data.text;
+                streamingText += data.text
                 setMessages((prev) =>
                   prev.map((msg) => (msg.id === messageId ? { ...msg, content: streamingText, sql: sqlContent } : msg)),
-                );
+                )
               }
-              break;
+              break
 
             case "response.text":
-              finalText = data.text;
-              break;
+              if (data.text) {
+                finalText = data.text
+                setMessages((prev) =>
+                  prev.map((msg) => (msg.id === messageId ? { ...msg, content: finalText, sql: sqlContent } : msg)),
+                )
+              }
+              break
 
             case "response":
               if (data.content) {
-                const thinkingContent = data.content.find((item: any) => item.type === "thinking");
-                const textContent = data.content.find((item: any) => item.type === "text");
+                const thinkingContent = data.content.find((item: any) => item.type === "thinking")
+                const textContent = data.content.find((item: any) => item.type === "text")
 
                 setMessages((prev) =>
                   prev.map((msg) =>
                     msg.id === messageId
                       ? {
-                        ...msg,
-                        thinking: thinkingContent?.thinking?.text || finalThinking,
-                        content: textContent?.text || finalText,
-                        sql: sqlContent,
-                        isStreaming: false,
-                        showDetails: false,
-                      }
+                          ...msg,
+                          thinking: thinkingContent?.thinking?.text || finalThinking,
+                          content: textContent?.text || finalText || streamingText,
+                          sql: sqlContent,
+                          isStreaming: false,
+                          showDetails: false,
+                        }
                       : msg,
                   ),
-                );
+                )
               }
-              return;
+              return
 
             case "done":
-              return;
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === messageId
+                    ? {
+                        ...msg,
+                        thinking: finalThinking || streamingThinking,
+                        content: finalText || streamingText,
+                        sql: sqlContent,
+                        isStreaming: false,
+                      }
+                    : msg,
+                ),
+              )
+              return
+
+            case "response.status":
+              if (data.message) {
+                console.log(`Status: ${data.message}`)
+              }
+              break
+
+            default:
+              // Log unhandled events for debugging
+              console.log(`Unhandled event: ${currentEvent}`, data)
+              break
           }
         }
       }
-    } catch (error) {
-      console.error("API streaming error:", error);
-      throw error;
-    }
-  };
 
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === messageId && msg.isStreaming
+            ? {
+                ...msg,
+                thinking: finalThinking || streamingThinking,
+                content: finalText || streamingText,
+                sql: sqlContent,
+                isStreaming: false,
+              }
+            : msg,
+        ),
+      )
+    } catch (error) {
+      console.error("API streaming error:", error)
+      throw error
+    }
+  }
 
   const handleUpload = async (
     type: "yaml" | "data",
