@@ -172,7 +172,7 @@ const HomeContent = ({ isReset, promptValue, recentValue, isLogOut, setCheckIsLo
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputValue.trim() || isLoading) return;
-    const userInput = inputValue.trim(); 
+    const userInput = inputValue.trim();
     // user message
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -216,16 +216,25 @@ const HomeContent = ({ isReset, promptValue, recentValue, isLogOut, setCheckIsLo
   const simulateStreamingResponse = async (messageId: string, userInput: string) => {
     try {
       if (!userInput) {
-      throw new Error("No user input found for streaming request");
-    }
+        throw new Error("No user input found for streaming request");
+      }
 
-    const apiUrl = `http://10.126.192.122:8690/stream?prompt=${encodeURIComponent(userInput)}`;
-      const response = await fetch(apiUrl, {
-        method: "GET",
+      // const apiUrl = `http://10.126.192.122:8690/stream?prompt=${encodeURIComponent(userInput)}`;
+      //   const response = await fetch(apiUrl, {
+      //     method: "GET",
+      //     headers: {
+      //       Accept: "application/json",
+      //       "Cache-Control": "no-cache",
+      //     },
+      //   });
+
+      const response = await fetch("http://10.126.192.122:8690/stream", {
+        method: "POST",
         headers: {
-          Accept: "application/json",
-          "Cache-Control": "no-cache",
+          Accept: "application/json",   // or "text/event-stream"
+          "Content-Type": "application/json",
         },
+        body: JSON.stringify({ prompt: userInput }),
       });
 
       if (!response.ok) {
