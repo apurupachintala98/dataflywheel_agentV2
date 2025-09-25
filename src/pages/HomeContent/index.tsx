@@ -223,7 +223,7 @@ const HomeContent = ({ isReset, promptValue, recentValue, isLogOut, setCheckIsLo
       const response = await fetch(apiUrl, {
         method: "GET",
         headers: {
-          Accept: "text/event-stream",
+          Accept: "application/json",
           "Cache-Control": "no-cache",
         },
       });
