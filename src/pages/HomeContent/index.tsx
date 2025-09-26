@@ -492,14 +492,17 @@ const HomeContent = ({ isReset, promptValue, recentValue, isLogOut, setCheckIsLo
 
   const simulateStreamingResponse = async (messageId: string, userInput: string) => {
 
-    const response = await fetch("http://10.126.192.122:8690/stream", {
-      method: "POST",
-      headers: {
-        Accept: "application/json", // Changed to proper SSE content type
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ prompt: userInput }),
-    })
+    const response = await fetch(
+      `http://10.126.192.122:8690/stream?prompt=${encodeURIComponent(userInput)}`,
+      {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`)
@@ -604,368 +607,368 @@ const HomeContent = ({ isReset, promptValue, recentValue, isLogOut, setCheckIsLo
         await new Promise((resolve) => setTimeout(resolve, 50))
       }
     }
+  }
+
+  const handleUpload = async (
+    type: "yaml" | "data",
+    triggerFileDialog: boolean = false,
+  ): Promise<void> => {
+    handleMenuClose();
+
+    if (triggerFileDialog) {
+      fileInputRef.current?.click();
+      return;
     }
 
-    const handleUpload = async (
-      type: "yaml" | "data",
-      triggerFileDialog: boolean = false,
-    ): Promise<void> => {
-      handleMenuClose();
-
-      if (triggerFileDialog) {
-        fileInputRef.current?.click();
+    if (type === "data") {
+      if (!selectedFile) {
         return;
       }
 
-      if (type === "data") {
-        if (!selectedFile) {
-          return;
-        }
+      setIsUploading(true);
+      const formData = new FormData();
 
-        setIsUploading(true);
-        const formData = new FormData();
+      const query = {
+        aplctn_cd: aplctnCdValue,
+        app_id: APP_ID,
+        api_key: API_KEY,
+        app_nm: APP_NM,
+        app_lvl_prefix: APP_LVL_PREFIX,
+        session_id: sessionId,
+      };
 
-        const query = {
-          aplctn_cd: aplctnCdValue,
-          app_id: APP_ID,
-          api_key: API_KEY,
-          app_nm: APP_NM,
-          app_lvl_prefix: APP_LVL_PREFIX,
-          session_id: sessionId,
-        };
+      formData.append("query", JSON.stringify(query));
+      formData.append("files", selectedFile);
 
-        formData.append("query", JSON.stringify(query));
-        formData.append("files", selectedFile);
-
-        try {
-          const response = await axios.post(
-            `${API_BASE_URL}${ENDPOINTS.UPLOAD_URL}`,
-            formData,
-            {
-              headers: {
-                "Content-Type": "multipart/form-data",
-              },
+      try {
+        const response = await axios.post(
+          `${API_BASE_URL}${ENDPOINTS.UPLOAD_URL}`,
+          formData,
+          {
+            headers: {
+              "Content-Type": "multipart/form-data",
             },
-          );
-
-          const successMessage = response?.data?.message || "File uploaded successfully!";
-          toast.success(successMessage, { position: "top-right" });
-          setSelectedFile(null);
-        } catch (error) {
-          console.error("Upload error:", error);
-          toast.error("Upload failed. Please try again.", { position: "top-right" });
-        } finally {
-          setIsUploading(false);
-        }
-      } else if (type === "yaml") {
-        window.open(
-          "https://app.snowflake.com/carelon/eda_preprod/#/data/databases/POC_SPC_SNOWPARK_DB/schemas/HEDIS_SCHEMA/stage/HEDIS_STAGE_FULL",
-          "_blank",
+          },
         );
+
+        const successMessage = response?.data?.message || "File uploaded successfully!";
+        toast.success(successMessage, { position: "top-right" });
+        setSelectedFile(null);
+      } catch (error) {
+        console.error("Upload error:", error);
+        toast.error("Upload failed. Please try again.", { position: "top-right" });
+      } finally {
+        setIsUploading(false);
       }
-    };
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      setSelectedFile(file);
-      handleUpload("data");
-    };
-
-    //   const executeSQL = async (sqlQuery: any) => {
-    //     console.log(sqlQuery);
-    //     setIsLoading(true);
-
-    //     const payload = buildPayload({
-    //       prompt: storedPrompt,
-    //       execSQL: sqlQuery.sqlQuery,
-    //       sessionId,
-    //       minimal: true,
-    //       selectedAppId,
-    //       user_nm,
-    //       user_pwd,
-    //       database_nm: dbDetails.database_nm,
-    //       schema_nm: dbDetails.schema_nm,
-    //       app_lvl_prefix: appLvlPrefix,
-    //     });
-    //     const { data, error } = await sendRequest(
-    //       `${API_BASE_URL}${ENDPOINTS.RUN_SQL_QUERY}`,
-    //       payload,
-    //     );
-    //     if (error || !data) {
-    //      setMessages((prev) => [
-    //   ...prev,
-    //   {
-    //     id: Date.now().toString(),
-    //     type: "assistant",
-    //     text: "Error communicating with backend.",
-    //     fromUser: false,
-    //     showExecute: false,
-    //     showSummarize: false,
-    //   },
-    // ]);
-
-    //       console.error("Error:", error);
-    //       setIsLoading(false);
-    //       return;
-    //     }
-
-    //     const convertToString = (input: any): string => {
-    //       if (input === null || input === undefined) return "";
-    //       if (typeof input === "string") return input;
-    //       if (Array.isArray(input)) return input.map(convertToString).join(", ");
-    //       if (typeof input === "object")
-    //         return Object.entries(input)
-    //           .map(([k, v]) => `${k}: ${convertToString(v)}`)
-    //           .join(", ");
-    //       return String(input);
-    //     };
-    //     let modelReply: string | React.ReactNode = "";
-    //     modelReply = typeof data === "string" ? data : convertToString(data);
-    //     setData(data);
-    //     handleVegaLiteRequest(sqlQuery.prompt, sqlQuery.sqlQuery)
-    //     console.log(data);
-    //     setMessages((prev) => [
-    //       ...prev,
-    //       {
-    //        id: Date.now().toString(),
-    //     type: "assistant",
-    //     text: modelReply,
-    //     fromUser: false,
-    //     executedResponse: data,
-    //     messageType: "table",
-    //     showExecute: false,
-    //     showSummarize: true,
-    //     prompt: sqlQuery.prompt,
-    //       },
-    //     ]);
-    //     setIsLoading(false);
-    //   };
-
-    // const apiCortex = async (message: any) => {
-    //   console.log(message);
-    //   setIsLoading(true);
-    //   setMessages((prev) =>
-    //     prev.map((msg) => {
-    //       const isSameResponse =
-    //         JSON.stringify(msg.executedResponse) === JSON.stringify(message.executedResponse);
-
-    //       if (msg.fromUser === false && msg.showSummarize && isSameResponse) {
-    //         return { ...msg, showSummarize: false };
-    //       }
-    //       return msg;
-    //     }),
-    //   );
-
-    //   const payload = buildPayload({
-    //     method: "cortex",
-    //     model: "llama3.1-70b",
-    //     prompt: storedPrompt,
-    //     sysMsg:
-    //       "You are powerful AI assistant in providing accurate answers always. Be Concise in providing answers based on context.",
-    //     responseData: message.executedResponse,
-    //     sessionId,
-    //     selectedAppId,
-    //     app_lvl_prefix: appLvlPrefix,
-
-    //   });
-
-    //   const { stream, error } = await sendRequest(
-    //     `${API_BASE_URL}${ENDPOINTS.CORTEX_COMPLETE}`,
-    //     payload,
-    //     undefined,
-    //     true,
-    //   );
-
-    //   if (!stream || error) {
-    //     console.error("Streaming error:", error);
-    //     setMessages((prev) => [
-    //       ...prev,
-    //       { text: "An error occurred while summarizing.", fromUser: false },
-    //     ]);
-    //     setIsLoading(false);
-    //     return;
-    //   }
-
-    //   let streamedText = "";
-
-    //   await handleStream(stream, {
-    //     fromUser: false,
-    //     streaming: true,
-    //     onToken: (token: string) => {
-    //       const endIndex = token.indexOf("end_of_stream");
-    //       if (endIndex !== -1) {
-    //         token = token.substring(0, endIndex);
-    //       }
-
-    //       if (token) {
-    //         streamedText += token;
-    //         setMessages((prev) => {
-    //           const updated = [...prev];
-    //           const lastIndex = updated.length - 1;
-    //           if (lastIndex >= 0 && updated[lastIndex].streaming) {
-    //             updated[lastIndex] = {
-    //               ...updated[lastIndex],
-    //               text: streamedText,
-    //             };
-    //           } else {
-    //             updated.push({
-    //               text: token,
-    //               fromUser: false,
-    //               streaming: true,
-    //               type: "text",
-    //               showSummarize: false,
-    //               prompt: message.prompt,
-    //               fdbck_id: message.fdbck_id,
-    //               session_id: message.session_id,
-    //             });
-    //           }
-    //           return updated;
-    //         });
-    //       }
-    //     },
-    //     onComplete: (response: any) => {
-    //       setMessages((prev) =>
-    //         prev.map((msg) => {
-    //           const isSameResponse =
-    //             JSON.stringify(msg.executedResponse) === JSON.stringify(message.executedResponse);
-
-    //           if (msg.fromUser === false && msg.showSummarize && isSameResponse) {
-    //             return {
-    //               ...msg,
-    //               streaming: false,
-    //               summarized: true,
-    //               showSummarize: false,
-    //               showFeedback: true,
-    //               fdbck_id: response.fdbck_id,
-    //               session_id: response.session_id,
-    //             };
-    //           }
-    //           return msg;
-    //         }),
-    //       );
-    //       setIsLoading(false);
-    //     },
-    //   });
-    // };
-
-    // const handleVegaLiteRequest = async (promptText: any, sqlQuery: any) => {
-    //   const payload = buildPayload({
-    //     selectedAppId,
-    //     sessionId,
-    //     prompt: promptText,
-    //     execSQL: sqlQuery,
-    //     minimal: true,
-    //     user_nm,
-    //     user_pwd,
-    //     database_nm: dbDetails.database_nm,
-    //     schema_nm: dbDetails.schema_nm,
-    //     app_lvl_prefix: appLvlPrefix,
-
-    //   });
-
-    //   try {
-    //     const response = await axios.post(
-    //       `${API_BASE_URL}${ENDPOINTS.GET_VEGALITE_JSON}`,
-    //       payload,
-    //       // {
-    //       //   headers: {
-    //       //     "Content-Type": "application/json",
-    //       //   },
-    //       // }
-    //     );
-    //     if (response.status === 200 && response.data) {
-    //       setVegaChartData(response.data);
-    //     } else {
-    //       console.error("Failed to generate Vega-Lite chart.");
-    //     }
-    //   } catch (err) {
-    //     console.error("VegaLite API error:", err);
-    //   }
-    // };
-
-    useEffect(() => {
-      const anchor = document.getElementById("scroll-anchor");
-      if (anchor) anchor.scrollIntoView({ behavior: "smooth" });
-    }, [messages.length]);
-
-    const handleReset = () => {
-      setInputValue("");
-      setMessages([]);
-      setSubmitted(false);
-      setData(null);
-      setSelectedFile(null);
-      setIsUploading(false);
-      setIsLoading(false);
-      setStoredPrompt("");
-      if (isReset) {
-        setDbDetails({ database_nm: "", schema_nm: "" });
-      }
-    };
-
-    useEffect(() => {
-      handleReset();
-    }, [isReset]);
-
-    useEffect(() => {
-      const InputVal = promptValue ? promptValue : "";
-      setInputValue(InputVal);
-    }, [promptValue]);
-
-    useEffect(() => {
-      if (recentValue) {
-        /** Recent code flow will come here */
-      }
-    }, [recentValue]);
-
-    const toggleDetails = (messageId: string) => {
-      setMessages((prev) =>
-        prev.map((msg) => (msg.id === messageId ? { ...msg, showDetails: !msg.showDetails } : msg)),
+    } else if (type === "yaml") {
+      window.open(
+        "https://app.snowflake.com/carelon/eda_preprod/#/data/databases/POC_SPC_SNOWPARK_DB/schemas/HEDIS_SCHEMA/stage/HEDIS_STAGE_FULL",
+        "_blank",
       );
-    };
+    }
+  };
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSelectedFile(file);
+    handleUpload("data");
+  };
 
-    return (
-      <MainContent
-        collapsed={collapsed}
-        toggleSidebar={toggleSidebar}
-        inputValue={inputValue}
-        messages={messages}
-        anchorEls={anchorEls}
-        fileLists={fileLists}
-        setFileLists={setFileLists}
-        selectedModels={selectedModels}
-        handleMenuClick={handleMenuClick}
-        handleMenuClose={handleMenuClose}
-        handleModelSelect={handleModelSelect}
-        handleInputChange={handleInputChange}
-        handleSubmit={handleSubmitWrapper}
-        isLoading={isLoading}
-        fileInputRef={fileInputRef}
-        selectedFile={selectedFile}
-        isUploading={isUploading}
-        handleFileChange={handleFileChange}
-        handleUpload={handleUpload}
-        data={data}
-        setSelectedFile={setSelectedFile}
-        // executeSQL={executeSQL}
-        // apiCortex={apiCortex}
-        submitted={submitted}
-        setSubmitted={setSubmitted}
-        open={open}
-        dbDetails={dbDetails}
-        setDbDetails={setDbDetails}
-        user_nm={user_nm}
-        user_pwd={user_pwd}
-        setUserNm={setUserNm}
-        setUserPwd={setUserPwd}
-        setCheckIsLogin={setCheckIsLogin}
-        isLogOut={isLogOut}
-        vegaChartData={vegaChartData}
-        setVegaChartData={setVegaChartData}
-        isReset={isReset}
-        toggleDetails={toggleDetails}
-      />
+  //   const executeSQL = async (sqlQuery: any) => {
+  //     console.log(sqlQuery);
+  //     setIsLoading(true);
+
+  //     const payload = buildPayload({
+  //       prompt: storedPrompt,
+  //       execSQL: sqlQuery.sqlQuery,
+  //       sessionId,
+  //       minimal: true,
+  //       selectedAppId,
+  //       user_nm,
+  //       user_pwd,
+  //       database_nm: dbDetails.database_nm,
+  //       schema_nm: dbDetails.schema_nm,
+  //       app_lvl_prefix: appLvlPrefix,
+  //     });
+  //     const { data, error } = await sendRequest(
+  //       `${API_BASE_URL}${ENDPOINTS.RUN_SQL_QUERY}`,
+  //       payload,
+  //     );
+  //     if (error || !data) {
+  //      setMessages((prev) => [
+  //   ...prev,
+  //   {
+  //     id: Date.now().toString(),
+  //     type: "assistant",
+  //     text: "Error communicating with backend.",
+  //     fromUser: false,
+  //     showExecute: false,
+  //     showSummarize: false,
+  //   },
+  // ]);
+
+  //       console.error("Error:", error);
+  //       setIsLoading(false);
+  //       return;
+  //     }
+
+  //     const convertToString = (input: any): string => {
+  //       if (input === null || input === undefined) return "";
+  //       if (typeof input === "string") return input;
+  //       if (Array.isArray(input)) return input.map(convertToString).join(", ");
+  //       if (typeof input === "object")
+  //         return Object.entries(input)
+  //           .map(([k, v]) => `${k}: ${convertToString(v)}`)
+  //           .join(", ");
+  //       return String(input);
+  //     };
+  //     let modelReply: string | React.ReactNode = "";
+  //     modelReply = typeof data === "string" ? data : convertToString(data);
+  //     setData(data);
+  //     handleVegaLiteRequest(sqlQuery.prompt, sqlQuery.sqlQuery)
+  //     console.log(data);
+  //     setMessages((prev) => [
+  //       ...prev,
+  //       {
+  //        id: Date.now().toString(),
+  //     type: "assistant",
+  //     text: modelReply,
+  //     fromUser: false,
+  //     executedResponse: data,
+  //     messageType: "table",
+  //     showExecute: false,
+  //     showSummarize: true,
+  //     prompt: sqlQuery.prompt,
+  //       },
+  //     ]);
+  //     setIsLoading(false);
+  //   };
+
+  // const apiCortex = async (message: any) => {
+  //   console.log(message);
+  //   setIsLoading(true);
+  //   setMessages((prev) =>
+  //     prev.map((msg) => {
+  //       const isSameResponse =
+  //         JSON.stringify(msg.executedResponse) === JSON.stringify(message.executedResponse);
+
+  //       if (msg.fromUser === false && msg.showSummarize && isSameResponse) {
+  //         return { ...msg, showSummarize: false };
+  //       }
+  //       return msg;
+  //     }),
+  //   );
+
+  //   const payload = buildPayload({
+  //     method: "cortex",
+  //     model: "llama3.1-70b",
+  //     prompt: storedPrompt,
+  //     sysMsg:
+  //       "You are powerful AI assistant in providing accurate answers always. Be Concise in providing answers based on context.",
+  //     responseData: message.executedResponse,
+  //     sessionId,
+  //     selectedAppId,
+  //     app_lvl_prefix: appLvlPrefix,
+
+  //   });
+
+  //   const { stream, error } = await sendRequest(
+  //     `${API_BASE_URL}${ENDPOINTS.CORTEX_COMPLETE}`,
+  //     payload,
+  //     undefined,
+  //     true,
+  //   );
+
+  //   if (!stream || error) {
+  //     console.error("Streaming error:", error);
+  //     setMessages((prev) => [
+  //       ...prev,
+  //       { text: "An error occurred while summarizing.", fromUser: false },
+  //     ]);
+  //     setIsLoading(false);
+  //     return;
+  //   }
+
+  //   let streamedText = "";
+
+  //   await handleStream(stream, {
+  //     fromUser: false,
+  //     streaming: true,
+  //     onToken: (token: string) => {
+  //       const endIndex = token.indexOf("end_of_stream");
+  //       if (endIndex !== -1) {
+  //         token = token.substring(0, endIndex);
+  //       }
+
+  //       if (token) {
+  //         streamedText += token;
+  //         setMessages((prev) => {
+  //           const updated = [...prev];
+  //           const lastIndex = updated.length - 1;
+  //           if (lastIndex >= 0 && updated[lastIndex].streaming) {
+  //             updated[lastIndex] = {
+  //               ...updated[lastIndex],
+  //               text: streamedText,
+  //             };
+  //           } else {
+  //             updated.push({
+  //               text: token,
+  //               fromUser: false,
+  //               streaming: true,
+  //               type: "text",
+  //               showSummarize: false,
+  //               prompt: message.prompt,
+  //               fdbck_id: message.fdbck_id,
+  //               session_id: message.session_id,
+  //             });
+  //           }
+  //           return updated;
+  //         });
+  //       }
+  //     },
+  //     onComplete: (response: any) => {
+  //       setMessages((prev) =>
+  //         prev.map((msg) => {
+  //           const isSameResponse =
+  //             JSON.stringify(msg.executedResponse) === JSON.stringify(message.executedResponse);
+
+  //           if (msg.fromUser === false && msg.showSummarize && isSameResponse) {
+  //             return {
+  //               ...msg,
+  //               streaming: false,
+  //               summarized: true,
+  //               showSummarize: false,
+  //               showFeedback: true,
+  //               fdbck_id: response.fdbck_id,
+  //               session_id: response.session_id,
+  //             };
+  //           }
+  //           return msg;
+  //         }),
+  //       );
+  //       setIsLoading(false);
+  //     },
+  //   });
+  // };
+
+  // const handleVegaLiteRequest = async (promptText: any, sqlQuery: any) => {
+  //   const payload = buildPayload({
+  //     selectedAppId,
+  //     sessionId,
+  //     prompt: promptText,
+  //     execSQL: sqlQuery,
+  //     minimal: true,
+  //     user_nm,
+  //     user_pwd,
+  //     database_nm: dbDetails.database_nm,
+  //     schema_nm: dbDetails.schema_nm,
+  //     app_lvl_prefix: appLvlPrefix,
+
+  //   });
+
+  //   try {
+  //     const response = await axios.post(
+  //       `${API_BASE_URL}${ENDPOINTS.GET_VEGALITE_JSON}`,
+  //       payload,
+  //       // {
+  //       //   headers: {
+  //       //     "Content-Type": "application/json",
+  //       //   },
+  //       // }
+  //     );
+  //     if (response.status === 200 && response.data) {
+  //       setVegaChartData(response.data);
+  //     } else {
+  //       console.error("Failed to generate Vega-Lite chart.");
+  //     }
+  //   } catch (err) {
+  //     console.error("VegaLite API error:", err);
+  //   }
+  // };
+
+  useEffect(() => {
+    const anchor = document.getElementById("scroll-anchor");
+    if (anchor) anchor.scrollIntoView({ behavior: "smooth" });
+  }, [messages.length]);
+
+  const handleReset = () => {
+    setInputValue("");
+    setMessages([]);
+    setSubmitted(false);
+    setData(null);
+    setSelectedFile(null);
+    setIsUploading(false);
+    setIsLoading(false);
+    setStoredPrompt("");
+    if (isReset) {
+      setDbDetails({ database_nm: "", schema_nm: "" });
+    }
+  };
+
+  useEffect(() => {
+    handleReset();
+  }, [isReset]);
+
+  useEffect(() => {
+    const InputVal = promptValue ? promptValue : "";
+    setInputValue(InputVal);
+  }, [promptValue]);
+
+  useEffect(() => {
+    if (recentValue) {
+      /** Recent code flow will come here */
+    }
+  }, [recentValue]);
+
+  const toggleDetails = (messageId: string) => {
+    setMessages((prev) =>
+      prev.map((msg) => (msg.id === messageId ? { ...msg, showDetails: !msg.showDetails } : msg)),
     );
   };
-  
 
-  export default HomeContent;
+  return (
+    <MainContent
+      collapsed={collapsed}
+      toggleSidebar={toggleSidebar}
+      inputValue={inputValue}
+      messages={messages}
+      anchorEls={anchorEls}
+      fileLists={fileLists}
+      setFileLists={setFileLists}
+      selectedModels={selectedModels}
+      handleMenuClick={handleMenuClick}
+      handleMenuClose={handleMenuClose}
+      handleModelSelect={handleModelSelect}
+      handleInputChange={handleInputChange}
+      handleSubmit={handleSubmitWrapper}
+      isLoading={isLoading}
+      fileInputRef={fileInputRef}
+      selectedFile={selectedFile}
+      isUploading={isUploading}
+      handleFileChange={handleFileChange}
+      handleUpload={handleUpload}
+      data={data}
+      setSelectedFile={setSelectedFile}
+      // executeSQL={executeSQL}
+      // apiCortex={apiCortex}
+      submitted={submitted}
+      setSubmitted={setSubmitted}
+      open={open}
+      dbDetails={dbDetails}
+      setDbDetails={setDbDetails}
+      user_nm={user_nm}
+      user_pwd={user_pwd}
+      setUserNm={setUserNm}
+      setUserPwd={setUserPwd}
+      setCheckIsLogin={setCheckIsLogin}
+      isLogOut={isLogOut}
+      vegaChartData={vegaChartData}
+      setVegaChartData={setVegaChartData}
+      isReset={isReset}
+      toggleDetails={toggleDetails}
+    />
+  );
+};
+
+
+export default HomeContent;
