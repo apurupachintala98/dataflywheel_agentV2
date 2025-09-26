@@ -177,6 +177,7 @@ const HomeContent = ({ isReset, promptValue, recentValue, isLogOut, setCheckIsLo
       type: "user",
       content: inputValue.trim(),
     }
+    console.log(inputValue.trim());
 
     setMessages((prev) => [...prev, userMessage])
     setInputValue("")
