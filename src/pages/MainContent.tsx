@@ -729,7 +729,6 @@ const MainContent = ({
                 width: "100%",
                 marginTop: messages.length === 0 ? "36%" : "40px",
                 zIndex: 1200,
-                position: "relative"
               }}
             >
               {messages.length === 0 && (
