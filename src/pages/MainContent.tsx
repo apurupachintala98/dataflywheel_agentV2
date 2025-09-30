@@ -707,7 +707,7 @@ const MainContent = ({
                         message={message}
                         // executeSQL={executeSQL}
                         // apiCortex={apiCortex}
-                        handleGraphClick={handleGraphClick}
+                        // handleGraphClick={handleGraphClick}
                       />
                     )}
                   </Box>
