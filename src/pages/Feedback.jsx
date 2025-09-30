@@ -285,21 +285,30 @@ const Feedback = ({ message }) => {
 //   )
 // }
 
-// Reusable SQL code block
 const SQLCodeBlock = ({ code }) => {
   return (
     <div className="border rounded-lg overflow-hidden shadow-sm">
-      <div className="bg-gray-100 px-3 py-2 text-sm font-medium border-b">
+      <div className="bg-gray-100 px-3 py-2 text-sm font-semibold border-b">
         Generated SQL
       </div>
-      <pre className="bg-gray-900 text-gray-100 p-4 overflow-x-auto text-sm rounded-b-lg">
-        <code className="language-sql">{code}</code>
-      </pre>
+      <SyntaxHighlighter
+        language="sql"
+        style={dracula}
+        customStyle={{
+          margin: 0,
+          padding: "16px",
+          fontSize: "0.85rem",
+          borderRadius: "0 0 8px 8px",
+        }}
+        wrapLongLines={true}
+      >
+        {code}
+      </SyntaxHighlighter>
     </div>
   );
 };
 
-// Main message renderer
+// ✅ Main message renderer
 const MessageWithFeedback = ({ message }) => {
   const isUser = message.fromUser;
 
@@ -324,17 +333,15 @@ const MessageWithFeedback = ({ message }) => {
         {/* ASSISTANT MESSAGE */}
         {!isUser && (
           <div className="space-y-4 text-sm">
-            {/* Thinking accordion */}
+            {/* Accordion for "thinking" */}
             {message.thinking && !message.isStreaming && (
-              <Accordion type="single" collapsible>
+              <Accordion type="single" collapsible className="border rounded-lg">
                 <AccordionItem value="thinking">
-                  <AccordionTrigger className="text-sm font-medium">
+                  <AccordionTrigger className="px-3 py-2 text-sm font-medium hover:bg-gray-50">
                     Show Details
                   </AccordionTrigger>
-                  <AccordionContent>
-                    <div className="text-gray-600 whitespace-pre-wrap">
-                      {message.thinking}
-                    </div>
+                  <AccordionContent className="px-3 py-2 text-gray-600 whitespace-pre-wrap bg-gray-50">
+                    {message.thinking}
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>
@@ -352,12 +359,12 @@ const MessageWithFeedback = ({ message }) => {
               </div>
             )}
 
-            {/* SQL block */}
+            {/* SQL code block */}
             {message.sql && <SQLCodeBlock code={message.sql} />}
 
-            {/* Normal assistant content */}
+            {/* Assistant text */}
             {message.content && (
-              <div className="whitespace-pre-wrap text-gray-800">
+              <div className="whitespace-pre-wrap text-gray-800 leading-relaxed">
                 {message.content}
                 {message.isStreaming && (
                   <span className="inline-block w-2 h-4 bg-primary ml-1 animate-pulse"></span>
