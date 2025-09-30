@@ -763,7 +763,7 @@ const MainContent = ({
                   boxShadow: "0px 4px 12px 0px rgba(39, 97, 187, 0.20)",
                   width: "100%",
                   maxWidth: "73%",
-                  position: submitted ? "fixed" : "absolute",
+                  position: "absolute",
                   flexShrink: 0,
                   bottom: submitted ? "40px" : "50%",
                   transform: submitted ? "translateY(0)" : "translateY(50%)",
