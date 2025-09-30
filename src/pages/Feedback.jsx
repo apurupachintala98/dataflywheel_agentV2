@@ -39,7 +39,7 @@ const Feedback = ({ message }) => {
   };
 
   const sendFeedback = async ({ action = null, commentText = null }) => {
- const { APP_CONFIG, API_BASE_URL, ENDPOINTS } = config(selectedAppId);
+    const { APP_CONFIG, API_BASE_URL, ENDPOINTS } = config(selectedAppId);
     const fdbck_id = message.fdbck_id || "";
     const session_id = message.session_id || "";
     const feedbk_actn_txt = typeof action === "boolean" ? (action ? "True" : "False") : action;
@@ -314,16 +314,14 @@ const MessageWithFeedback = ({ message }) => {
 
   return (
     <div
-      className={`flex w-full my-3 ${
-        isUser ? "justify-end" : "justify-start"
-      }`}
+      className={`flex w-full my-3 ${isUser ? "justify-end" : "justify-start"
+        }`}
     >
       <div
-        className={`max-w-[80%] px-4 py-3 rounded-2xl shadow-md ${
-          isUser
+        className={`max-w-[80%] px-4 py-3 rounded-2xl shadow-md ${isUser
             ? "bg-blue-500 text-white rounded-br-none"
             : "bg-white text-gray-900 border border-gray-200 rounded-bl-none"
-        }`}
+          }`}
       >
         {/* USER MESSAGE */}
         {isUser && (
@@ -334,7 +332,7 @@ const MessageWithFeedback = ({ message }) => {
         {!isUser && (
           <div className="space-y-4 text-sm">
             {/* Accordion for "thinking" */}
-            {message.thinking && !message.isStreaming && (
+            {/* {message.thinking && !message.isStreaming && (
               <Accordion type="single" collapsible className="border rounded-lg">
                 <AccordionItem value="thinking">
                   <AccordionTrigger className="px-3 py-2 text-sm font-medium hover:bg-gray-50">
@@ -345,7 +343,19 @@ const MessageWithFeedback = ({ message }) => {
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>
+            )} */}
+
+            {message.thinking && !message.isStreaming && (
+              <Accordion type="single" collapsible>
+                <AccordionItem value="thinking">
+                  <AccordionTrigger>Show Details</AccordionTrigger>
+                  <AccordionContent>
+                    {message.thinking}
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             )}
+
 
             {message.thinking && message.isStreaming && (
               <div className="border rounded-lg p-3 bg-gray-50">
