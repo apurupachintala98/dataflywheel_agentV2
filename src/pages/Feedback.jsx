@@ -226,228 +226,6 @@ const Feedback = ({ message }) => {
   );
 };
 
-// const MessageWithFeedback = ({ message, executeSQL, apiCortex, handleGraphClick }) => {
-//   console.log("msg", message);
-//   if (!message?.text && message.type !== "sql") {
-//     return null;
-//   }
-//   const [sqlState, setSqlState] = useState({
-//     collapsed: false,
-//     hidden: false,
-//     isEditing: false,
-//     editedSQL: message.sqlQuery || "",
-//   });
-//   const isSQL = message.type === "sql";
-//   const executedResponse = message.executedResponse;
-//   const rows = Array.isArray(executedResponse?.rows)
-//     ? executedResponse.rows
-//     : executedResponse || [];
-//   const columns = rows.length > 0 ? Object.keys(rows[0]) : [];
-//   const shouldShowFeedback =
-//     !message.fromUser &&
-//     (message.type === "text" ||
-//       (message.type === "sql" && message.summarized && message.showSummarize === false));
-
-//   return (
-//     <MessageContainer>
-//       <SecondMessageCon className="mb-4">
-//         <div
-//           className={`p-2 rounded-lg ${
-//             message.fromUser
-//               ? "bg-blue-500 text-white"
-//               : isSQL
-//               ? "bg-gray-900 text-white"
-//               : "bg-gray-200 text-black"
-//           }`}
-//           style={{
-//             fontFamily: "ui-sans-serif,-apple-system,system-ui,Segoe UI,Helvetica,Arial,sans-serif",
-//             textAlign: "left",
-//             padding: isSQL ? "12px" : "8px",
-//             borderRadius: "8px",
-//           }}
-//         >
-//           {message.type === "sql" && !sqlState.hidden ? (
-//             <>
-//               <Box sx={{ position: "relative", mb: 2 }}>
-//                 {message.interpretation && (
-//                   <Box
-//                     sx={{ mt: 1, mb: 1, whiteSpace: "pre-line" }}
-//                     dangerouslySetInnerHTML={{ __html: message.interpretation }}
-//                   />
-//                 )}
-//                 <Box
-//                   sx={{
-//                     position: "absolute",
-//                     top: 34,
-//                     right: 8,
-//                     display: "flex",
-//                     gap: 1,
-//                     backgroundColor: "rgba(255,255,255)",
-//                     borderRadius: "8px",
-//                     padding: "4px 6px",
-//                     boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
-//                     zIndex: 1000,
-//                   }}
-//                 >
-//                   <Tooltip title="Copy SQL">
-//                     <IconButton
-//                       size="small"
-//                       onClick={() => navigator.clipboard.writeText(sqlState.editedSQL)}
-//                     >
-//                       <ContentCopyIcon fontSize="small" />
-//                     </IconButton>
-//                   </Tooltip>
-
-//                   <Tooltip title={sqlState.collapsed ? "Expand SQL" : "Collapse SQL"}>
-//                     <IconButton
-//                       size="small"
-//                       onClick={() =>
-//                         setSqlState((prev) => ({ ...prev, collapsed: !prev.collapsed }))
-//                       }
-//                     >
-//                       <ExpandMoreIcon
-//                         fontSize="small"
-//                         sx={{
-//                           transform: sqlState.collapsed ? "rotate(180deg)" : "none",
-//                           transition: "transform 0.2s ease",
-//                         }}
-//                       />
-//                     </IconButton>
-//                   </Tooltip>
-
-//                   <Tooltip title={sqlState.isEditing ? "Save SQL" : "Edit SQL"}>
-//                     <IconButton
-//                       size="small"
-//                       onClick={() => {
-//                         if (sqlState.isEditing) {
-//                           message.text = sqlState.editedSQL;
-//                         }
-//                         setSqlState((prev) => ({ ...prev, isEditing: !prev.isEditing }));
-//                       }}
-//                     >
-//                       {sqlState.isEditing ? (
-//                         <SaveIcon fontSize="small" />
-//                       ) : (
-//                         <EditIcon fontSize="small" />
-//                       )}
-//                     </IconButton>
-//                   </Tooltip>
-//                 </Box>
-//                 {!sqlState.collapsed && (
-//                   <Box
-//                     sx={{
-//                       maxHeight: 300,
-//                       overflowY: "auto",
-//                       borderRadius: 2,
-//                       border: "1px solid #333",
-//                       backgroundColor: "#282a36",
-//                       padding: 1,
-//                       "&::-webkit-scrollbar": {
-//                         width: "8px",
-//                       },
-//                       "&::-webkit-scrollbar-thumb": {
-//                         backgroundColor: "#555",
-//                         borderRadius: "8px",
-//                       },
-//                       "&::-webkit-scrollbar-track": {
-//                         backgroundColor: "#2a2a2a",
-//                       },
-//                     }}
-//                   >
-//                     {sqlState.isEditing ? (
-//                       <textarea
-//                         value={sqlState.editedSQL}
-//                         onChange={(e) =>
-//                           setSqlState((prev) => ({ ...prev, editedSQL: e.target.value }))
-//                         }
-//                         wrap="soft"
-//                         style={{
-//                           width: "100%",
-//                           height: "200px",
-//                           backgroundColor: "#1e1e1e",
-//                           color: "#fff",
-//                           fontFamily: "monospace",
-//                           fontSize: "14px",
-//                           border: "none",
-//                           outline: "none",
-//                           resize: "vertical",
-//                           padding: "8px",
-//                           borderRadius: "4px",
-//                           overflowX: "hidden",
-//                         }}
-//                       />
-//                     ) : (
-//                       <SyntaxHighlighter language="sql" style={dracula}>
-//                         {message.text}
-//                       </SyntaxHighlighter>
-//                     )}
-//                   </Box>
-//                 )}
-//               </Box>
-//             </>
-//           ) : message.type === "table" ? (
-//             <>
-//               <PaginatedTable data={message.executedResponse} />
-//               {rows.length > 1 && columns.length > 1 && (
-//                 <Button
-//                   variant="contained"
-//                   startIcon={<BarChartIcon />}
-//                   sx={{
-//                     marginTop: "15px",
-//                     fontSize: "0.875rem",
-//                     color: "#fff",
-//                     backgroundColor: "#000",
-//                     display: "flex",
-//                   }}
-//                   onClick={handleGraphClick}
-//                 >
-//                   Graph View
-//                 </Button>
-//               )}
-//             </>
-//           ) : typeof message.text === "string" ? (
-//             <Typography sx={{ whiteSpace: "pre-wrap" }}>{message.text}</Typography>
-//           ) : (
-//             <Box
-//               sx={{
-//                 wordBreak: "break-word",
-//                 position: "relative",
-//                 zIndex: 1000,
-//                 overflow: "visible",
-//               }}
-//             >
-//               {message.text}
-//             </Box>
-//           )}
-
-//           {message.showExecute && (
-//             <Button
-//               variant="contained"
-//               sx={{ mt: 2, backgroundColor: "#000", color: "#fff" }}
-//               onClick={() => {
-//                 executeSQL({ ...message, text: sqlState.editedSQL });
-//                 message.showExecute = false;
-//               }}
-//             >
-//               Execute SQL
-//             </Button>
-//           )}
-//           {message.showSummarize === true && (
-//             <Button
-//               variant="contained"
-//               sx={{ marginTop: "10px", backgroundColor: "#000", color: "#fff" }}
-//               onClick={() => apiCortex(message)}
-//             >
-//               Summarize
-//             </Button>
-//           )}
-//         </div>
-//         {shouldShowFeedback && <Feedback message={message} />}
-//       </SecondMessageCon>
-//     </MessageContainer>
-//   );
-// };
-
 // Reusable SQL code block
 const SQLCodeBlock = ({ code }) => {
   return (
@@ -460,53 +238,129 @@ const SQLCodeBlock = ({ code }) => {
   )
 }
 
+// Main message renderer
+// const MessageWithFeedback = ({ message, handleGraphClick }) => {
+//   return (
+//     <div className="space-y-3">
+//       {message.thinking && !message.isStreaming && (
+//         <Accordion type="single" collapsible>
+//           <AccordionItem value="thinking">
+//             <AccordionTrigger className="text-sm font-medium justify-end">
+//               Show Details
+//             </AccordionTrigger>
+//             <AccordionContent>
+//               <div className="text-sm text-muted-foreground whitespace-pre-wrap">
+//                 {message.thinking}
+//               </div>
+//             </AccordionContent>
+//           </AccordionItem>
+//         </Accordion>
+//       )}
+
+//       {message.thinking && message.isStreaming && (
+//         <div className="border rounded-lg p-3 bg-muted/50">
+//           <div className="text-sm font-medium mb-2 flex items-center gap-2">
+//             <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+//             Thinking...
+//           </div>
+//           <div className="text-sm text-muted-foreground whitespace-pre-wrap">
+//             {message.thinking}
+//           </div>
+//         </div>
+//       )}
+
+//       {/* SQL code block */}
+//       {message.sql && <SQLCodeBlock code={message.sql} />}
+
+//       {/* Normal content */}
+//       {message.content && (
+//         <div className="whitespace-pre-wrap">
+//           {message.content}
+//           {message.isStreaming && (
+//             <span className="inline-block w-2 h-4 bg-primary ml-1 animate-pulse"></span>
+//           )}
+//         </div>
+//       )}
+//     </div>
+//   )
+// }
 
 // Main message renderer
 const MessageWithFeedback = ({ message, handleGraphClick }) => {
+  const isUser = message.fromUser;
+
   return (
-    <div className="space-y-3">
-      {message.thinking && !message.isStreaming && (
-        <Accordion type="single" collapsible>
-          <AccordionItem value="thinking">
-            <AccordionTrigger className="text-sm font-medium justify-end">
-              Show Details
-            </AccordionTrigger>
-            <AccordionContent>
-              <div className="text-sm text-muted-foreground whitespace-pre-wrap">
-                {message.thinking}
+    <div
+      className={`flex w-full my-3 ${
+        isUser ? "justify-end" : "justify-start"
+      }`}
+    >
+      <div
+        className={`max-w-[75%] rounded-xl px-4 py-3 shadow-sm ${
+          isUser
+            ? "bg-blue-500 text-white rounded-br-none"
+            : "bg-gray-100 text-gray-900 rounded-bl-none"
+        }`}
+        style={{ textAlign: "left" }}
+      >
+        {/* User message (right aligned, plain text) */}
+        {isUser && (
+          <div className="whitespace-pre-wrap">{message.text}</div>
+        )}
+
+        {/* Assistant message (left aligned) */}
+        {!isUser && (
+          <div className="space-y-3">
+            {/* Thinking (accordion or inline) */}
+            {message.thinking && !message.isStreaming && (
+              <Accordion type="single" collapsible>
+                <AccordionItem value="thinking">
+                  <AccordionTrigger className="text-sm font-medium">
+                    Show Details
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="text-sm text-muted-foreground whitespace-pre-wrap">
+                      {message.thinking}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            )}
+
+            {message.thinking && message.isStreaming && (
+              <div className="border rounded-lg p-3 bg-muted/50">
+                <div className="text-sm font-medium mb-2 flex items-center gap-2">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                  Thinking...
+                </div>
+                <div className="text-sm text-muted-foreground whitespace-pre-wrap">
+                  {message.thinking}
+                </div>
               </div>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
-      )}
+            )}
 
-      {message.thinking && message.isStreaming && (
-        <div className="border rounded-lg p-3 bg-muted/50">
-          <div className="text-sm font-medium mb-2 flex items-center gap-2">
-            <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-            Thinking...
+            {/* SQL code block */}
+            {message.sql && <SQLCodeBlock code={message.sql} />}
+
+            {/* Assistant content */}
+            {message.content && (
+              <div className="whitespace-pre-wrap">
+                {message.content}
+                {message.isStreaming && (
+                  <span className="inline-block w-2 h-4 bg-primary ml-1 animate-pulse"></span>
+                )}
+              </div>
+            )}
           </div>
-          <div className="text-sm text-muted-foreground whitespace-pre-wrap">
-            {message.thinking}
-          </div>
-        </div>
-      )}
+        )}
 
-      {/* SQL code block */}
-      {message.sql && <SQLCodeBlock code={message.sql} />}
-
-      {/* Normal content */}
-      {message.content && (
-        <div className="whitespace-pre-wrap">
-          {message.content}
-          {message.isStreaming && (
-            <span className="inline-block w-2 h-4 bg-primary ml-1 animate-pulse"></span>
-          )}
-        </div>
-      )}
+        {/* Feedback (only for assistant messages) */}
+        {!isUser && <Feedback message={message} />}
+      </div>
     </div>
-  )
-}
+  );
+};
+
 
 
 
