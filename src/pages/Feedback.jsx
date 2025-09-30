@@ -331,19 +331,7 @@ const MessageWithFeedback = ({ message }) => {
         {/* ASSISTANT MESSAGE */}
         {!isUser && (
           <div className="space-y-4 text-sm">
-            {/* Accordion for "thinking" */}
-            {/* {message.thinking && !message.isStreaming && (
-              <Accordion type="single" collapsible className="border rounded-lg">
-                <AccordionItem value="thinking">
-                  <AccordionTrigger className="px-3 py-2 text-sm font-medium hover:bg-gray-50">
-                    Show Details
-                  </AccordionTrigger>
-                  <AccordionContent className="px-3 py-2 text-gray-600 whitespace-pre-wrap bg-gray-50">
-                    {message.thinking}
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-            )} */}
+        
 
             {message.thinking && !message.isStreaming && (
               <Accordion type="single" collapsible>
