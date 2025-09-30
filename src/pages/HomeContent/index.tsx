@@ -181,6 +181,8 @@ const HomeContent = ({ isReset, promptValue, recentValue, isLogOut, setCheckIsLo
     setMessages((prev) => [...prev, userMessage])
     setInputValue("")
     setIsLoading(true)
+    setSubmitted(true);
+
 
     // Create assistant message placeholder
     const assistantMessage: Message = {
